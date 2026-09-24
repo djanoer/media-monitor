@@ -38,6 +38,9 @@ if not db_path.exists():
     )
     st.stop()
 
+# Pastikan skema terbaru (idempoten; CREATE TABLE IF NOT EXISTS).
+repository.init_db(db_path)
+
 media_list = load_media()
 display = {m["name"]: m["display"] for m in media_list}
 warna = {m["name"]: m.get("color", "#9aa0a6") for m in media_list}

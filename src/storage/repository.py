@@ -43,6 +43,12 @@ CREATE TABLE IF NOT EXISTS fetch_media_log (
     fetched_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_fetch_media_log_run ON fetch_media_log(run_id);
+
+CREATE TABLE IF NOT EXISTS keyword_watchlist (
+    keyword TEXT PRIMARY KEY COLLATE NOCASE,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL
+);
 """
 
 
@@ -258,10 +264,18 @@ def get_media_last_status(db_path: str | pathlib.Path) -> dict[str, dict]:
         return {r["media"]: dict(r) for r in rows}
 
 
+def _like_aman(keyword: str) -> str:
+    """Escape karakter khusus LIKE (%, _, \) lalu bungkus dengan %...%."""
+    aman = (
+        keyword.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    )
+    return f"%{aman}%"
+
+
 def _klausa_keyword(keyword: str) -> tuple[str, list]:
     """Klausa WHERE + params untuk pencarian keyword di judul/ringkasan."""
-    pola = f"%{keyword}%"
-    return "(title LIKE ? OR summary LIKE ?)", [pola, pola]
+    pola = _like_aman(keyword)
+    return "(title LIKE ? ESCAPE '\\' OR summary LIKE ? ESCAPE '\\')", [pola, pola]
 
 
 def count_by_day_keyword(
@@ -303,7 +317,53 @@ def get_titles_keyword(
     """Judul-judul artikel yang mengandung keyword (untuk analisa kata terkait)."""
     with _connect(db_path) as conn:
         rows = conn.execute(
-            "SELECT title FROM articles WHERE title LIKE ? LIMIT ?",
-            (f"%{keyword}%", limit),
+            "SELECT title FROM articles WHERE title LIKE ? ESCAPE '\\' LIMIT ?",
+            (_like_aman(keyword), limit),
         )
         return [r["title"] for r in rows if r["title"]]
+
+
+def get_watchlist(db_path: str | pathlib.Path) -> list[str]:
+    """Daftar keyword/hashtag yang dipantau, urut waktu ditambahkan."""
+    with _connect(db_path) as conn:
+        return [
+            r["keyword"]
+            for r in conn.execute(
+                "SELECT keyword FROM keyword_watchlist"
+                " WHERE active = 1 ORDER BY created_at"
+            )
+        ]
+
+
+def add_keyword(db_path: str | pathlib.Path, keyword: str) -> bool:
+    """Tambah keyword ke watchlist. False bila kosong/duplikat (case-insensitive)."""
+    kw = (keyword or "").strip()
+    if not kw:
+        return False
+    with _connect(db_path) as conn:
+        cur = conn.execute(
+            "INSERT OR IGNORE INTO keyword_watchlist (keyword, active, created_at)"
+            " VALUES (?, 1, ?)",
+            (kw, _utcnow()),
+        )
+        return cur.rowcount == 1
+
+
+def remove_keyword(db_path: str | pathlib.Path, keyword: str) -> bool:
+    """Hapus keyword dari watchlist. False bila tidak ada."""
+    with _connect(db_path) as conn:
+        cur = conn.execute(
+            "DELETE FROM keyword_watchlist WHERE keyword = ?",
+            ((keyword or "").strip(),),
+        )
+        return cur.rowcount == 1
+
+
+def count_matrix(
+    db_path: str | pathlib.Path, keywords: list[str]
+) -> dict[str, dict[str, int]]:
+    """Matriks liputan: {keyword: {media: jumlah_artikel}}.
+
+    Dipakai untuk komparasi antar media: isu apa yang paling dibahas siapa.
+    """
+    return {kw: count_by_media_keyword(db_path, kw) for kw in keywords}

@@ -159,6 +159,39 @@ def test_keyword_tren_media_judul(tmp_path):
     assert repository.count_by_day_keyword(db, "tidakada") == {}
 
 
+def test_watchlist_tambah_hapus(tmp_path):
+    db = tmp_path / "test.db"
+    repository.init_db(db)
+    assert repository.get_watchlist(db) == []
+
+    assert repository.add_keyword(db, " timnas ") is True
+    assert repository.add_keyword(db, "TIMNAS") is False  # duplikat case-insensitive
+    assert repository.add_keyword(db, "   ") is False
+    assert repository.get_watchlist(db) == ["timnas"]
+
+    assert repository.remove_keyword(db, "timnas") is True
+    assert repository.remove_keyword(db, "timnas") is False
+    assert repository.get_watchlist(db) == []
+
+
+def test_count_matrix(tmp_path):
+    db = tmp_path / "test.db"
+    repository.init_db(db)
+    data = [
+        _artikel_berkeyword("https://a.example/1", "tempo", "Rupiah menguat",
+                            "2026-09-24T01:00:00+00:00"),
+        _artikel_berkeyword("https://a.example/2", "kompas", "Rupiah melemah",
+                            "2026-09-24T02:00:00+00:00"),
+        _artikel_berkeyword("https://a.example/3", "kompas", "Timnas menang",
+                            "2026-09-25T01:00:00+00:00"),
+    ]
+    assert repository.insert_articles(db, data) == 3
+    matriks = repository.count_matrix(db, ["rupiah", "timnas"])
+    assert matriks["rupiah"] == {"tempo": 1, "kompas": 1}
+    assert matriks["timnas"] == {"kompas": 1}
+    assert matriks["timnas"].get("tempo", 0) == 0
+
+
 def test_pencatatan_run_dan_media(tmp_path):
     db = tmp_path / "test.db"
     repository.init_db(db)

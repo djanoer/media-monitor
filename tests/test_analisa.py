@@ -28,8 +28,8 @@ def test_kata_terkait():
 
 def test_kata_terkait_kosong():
     assert analisa.kata_terkait([], "rupiah", STOP) == []
-    # keyword tidak ada di judul -> semua kata non-stopword dihitung
-    assert analisa.kata_terkait(["Rupiah menguat"], "bbm", STOP) == [
-        ("rupiah", 1),
-        ("menguat", 1),
-    ]
+    # keyword tidak ada di judul -> semua kata non-stopword dihitung (urutan tie bebas)
+    assert dict(analisa.kata_terkait(["Rupiah menguat"], "bbm", STOP)) == {
+        "rupiah": 1,
+        "menguat": 1,
+    }

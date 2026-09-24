@@ -201,6 +201,15 @@ dan daftar artikel dengan keyword di-highlight. Murni SQL + hitung kata,
 tanpa ML. Kartu artikel dipindah ke `app/komponen.py` bersama agar tidak
 duplikasi. Fungsi analisa teks murni di `app/analisa.py` (di-unit-test).
 
+Pembaruan 25 Sep 2026 (Watchlist + matriks liputan): keyword/hashtag tidak
+lagi diketik manual, melainkan disimpan di tabel `keyword_watchlist`
+(dikelola lewat UI: tambah/hapus di halaman Analisa). Halaman menampilkan
+matriks liputan keyword x media (siapa membahas isu apa, seberapa banyak)
+dan tabel "isu terhangat per media". Halaman viewer memanggil
+`init_db` (idempoten) agar tabel baru terbentuk walau DB dibuat sebelum
+patch ini. Pro/kontra/netral BELUM dikerjakan: butuh klasifikasi stance
+(zero-shot NLI multilingual diusulkan masuk Fase 2, bukan kamus kata).
+
 ### Fase 2 — Processing: Embedding & Klasterisasi Isu
 
 - [ ] `src/processing/cleaning.py`: normalisasi judul/ringkasan (lowercase, hapus tag media)
