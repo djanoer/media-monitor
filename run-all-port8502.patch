@@ -1,0 +1,117 @@
+From 3338201f6a461b5b3939f924df2fc98d3e6ed403 Mon Sep 17 00:00:00 2001
+From: Kai <kai@localhost>
+Date: Fri, 25 Sep 2026 03:58:05 +0800
+Subject: [PATCH] gabung peluncur jadi run-all.bat, viewer pindah ke port 8502
+
+---
+ ROADMAP.md          |  6 ++++++
+ run-all.bat         | 22 ++++++++++++++++++++++
+ run-application.bat | 22 ----------------------
+ run-viewer.bat      | 20 --------------------
+ 4 files changed, 28 insertions(+), 42 deletions(-)
+ create mode 100644 run-all.bat
+ delete mode 100644 run-application.bat
+ delete mode 100644 run-viewer.bat
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index 3d01f94..781cade 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -176,6 +176,12 @@ query baru di `src/storage/repository.py` (`get_latest_articles`,
+ (double-click, browser terbuka otomatis). Struktur ini yang akan berkembang
+ menjadi dashboard Fase 3, bukan kode buangan.
+ 
++Pembaruan 25 Sep 2026: peluncur digabung menjadi satu `run-all.bat`
++(scheduler di window minimize + viewer sekaligus, port viewer 8502 karena
++port 8501 dipakai aplikasi analisa lain di laptop Nucifera). File
++`run-application.bat`/`run-viewer.bat` yang terpisah dihapus agar tidak
++membingungkan. `uji-sekali.bat` tetap ada untuk testing.
++
+ ### Fase 2 — Processing: Embedding & Klasterisasi Isu
+ 
+ - [ ] `src/processing/cleaning.py`: normalisasi judul/ringkasan (lowercase, hapus tag media)
+diff --git a/run-all.bat b/run-all.bat
+new file mode 100644
+index 0000000..5dabf1f
+--- /dev/null
++++ b/run-all.bat
+@@ -0,0 +1,22 @@
++@echo off
++rem ============================================================
++rem  Media Monitor - scheduler + viewer dalam satu klik.
++rem  Scheduler berjalan di window kecil (minimize),
++rem  viewer dibuka di browser otomatis http://localhost:8502
++rem  Tutup KEDUA window untuk berhenti total.
++rem ============================================================
++cd /d "%~dp0"
++
++if not exist ".venv\Scripts\python.exe" (
++    echo [ERROR] .venv tidak ditemukan di folder ini.
++    echo Buat dulu dengan perintah:  python -m venv .venv
++    pause
++    exit /b 1
++)
++
++echo Menjalankan scheduler di window terpisah (minimize)...
++start "Media Monitor - Scheduler" /min ".venv\Scripts\python.exe" run_scheduler.py
++
++echo Membuka viewer di browser...
++".venv\Scripts\python.exe" -m streamlit run app/Home.py --browser.gatherUsageStats false --server.port 8502
++pause
+diff --git a/run-application.bat b/run-application.bat
+deleted file mode 100644
+index 89ddc63..0000000
+--- a/run-application.bat
++++ /dev/null
+@@ -1,22 +0,0 @@
+-@echo off
+-rem ============================================================
+-rem  Media Monitor - peluncur scheduler (berjalan terus)
+-rem  Letakkan file ini di folder utama project (sejajar
+-rem  run_scheduler.py), lalu double-click untuk menjalankan.
+-rem  Tutup window ini untuk menghentikan scheduler.
+-rem ============================================================
+-cd /d "%~dp0"
+-
+-if not exist ".venv\Scripts\python.exe" (
+-    echo [ERROR] .venv tidak ditemukan di folder ini.
+-    echo Buat dulu dengan perintah:  python -m venv .venv
+-    pause
+-    exit /b 1
+-)
+-
+-echo ============================================================
+-echo  Media Monitor berjalan - fetch tiap 1 jam.
+-echo  Tutup window ini untuk berhenti.
+-echo ============================================================
+-".venv\Scripts\python.exe" run_scheduler.py
+-pause
+diff --git a/run-viewer.bat b/run-viewer.bat
+deleted file mode 100644
+index ae331e0..0000000
+--- a/run-viewer.bat
++++ /dev/null
+@@ -1,20 +0,0 @@
+-@echo off
+-rem ============================================================
+-rem  Media Monitor - buka viewer sementara di browser.
+-rem  Letakkan file ini di folder utama project (sejajar
+-rem  run_scheduler.py), lalu double-click. Browser terbuka
+-rem  otomatis di http://localhost:8501
+-rem  Tutup window ini untuk menghentikan viewer.
+-rem ============================================================
+-cd /d "%~dp0"
+-
+-if not exist ".venv\Scripts\python.exe" (
+-    echo [ERROR] .venv tidak ditemukan di folder ini.
+-    echo Buat dulu dengan perintah:  python -m venv .venv
+-    pause
+-    exit /b 1
+-)
+-
+-echo Membuka Media Monitor di browser...
+-".venv\Scripts\python.exe" -m streamlit run app/Home.py --browser.gatherUsageStats false
+-pause
+-- 
+2.43.0
+

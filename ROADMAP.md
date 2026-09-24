@@ -176,6 +176,12 @@ query baru di `src/storage/repository.py` (`get_latest_articles`,
 (double-click, browser terbuka otomatis). Struktur ini yang akan berkembang
 menjadi dashboard Fase 3, bukan kode buangan.
 
+Pembaruan 25 Sep 2026: peluncur digabung menjadi satu `run-all.bat`
+(scheduler di window minimize + viewer sekaligus, port viewer 8502 karena
+port 8501 dipakai aplikasi analisa lain di laptop Nucifera). File
+`run-application.bat`/`run-viewer.bat` yang terpisah dihapus agar tidak
+membingungkan. `uji-sekali.bat` tetap ada untuk testing.
+
 ### Fase 2 — Processing: Embedding & Klasterisasi Isu
 
 - [ ] `src/processing/cleaning.py`: normalisasi judul/ringkasan (lowercase, hapus tag media)
