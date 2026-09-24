@@ -133,19 +133,31 @@ Tujuan: pondasi kokoh sebelum satu baris kode aplikasi ditulis.
 - Smoke test lolos, `streamlit hello` terbuka di browser.
 - Struktur folder + config YAML sudah ada dan ter-commit ke git.
 
-### Fase 1 — Ingestion Pipeline
+### Fase 1 — Ingestion Pipeline [SEDANG BERJALAN: uji 24 jam dimulai 25 Sep 2026 ~03:01 WITA]
 
-- [ ] `src/common/http_client.py`: request dengan retry, timeout, user-agent, jeda antar media
-- [ ] `src/ingestion/fetcher.py`: satu fetcher generik (feedparser), tangani native + Google News
+- [x] `src/common/http_client.py`: request dengan retry, timeout, user-agent, jeda antar media
+- [x] `src/ingestion/fetcher.py`: satu fetcher generik (feedparser), tangani native + Google News
       (ikuti redirect ke URL artikel asli)
-- [ ] `src/storage/`: skema SQLite (`articles`: url UNIQUE, media, judul, ringkasan, link,
-      published_at, fetched_at) + repository
-- [ ] Dedup: URL sudah ada = skip (UNIQUE constraint + ON CONFLICT)
-- [ ] `src/scheduler/`: job fetch tiap 1 jam untuk semua media aktif
-- [ ] Logging: tiap siklus catat jumlah artikel baru per media ke file log
+- [x] `src/storage/`: skema SQLite (`articles`: url UNIQUE, media, judul, ringkasan, link,
+      published_at, fetched_at) + repository; tabel `fetch_runs` + `fetch_media_log`
+      untuk audit tiap siklus (dipakai halaman status Fase 4)
+- [x] Dedup: URL sudah ada = skip (UNIQUE constraint + ON CONFLICT); terverifikasi 354 artikel,
+      354 URL unik, 0 duplikat
+- [x] `src/scheduler/`: job fetch tiap 1 jam untuk semua media aktif (APScheduler in-process,
+      `run_scheduler.py`; `--once` untuk satu siklus / cron)
+- [x] Logging: tiap siklus catat jumlah artikel baru per media ke `logs/fetch.log`
+
+Keputusan tambahan Fase 1 (25 Sep 2026): `fetch.max_articles_per_media: 30` di
+`config/settings.yaml` — feed Google News mengembalikan 100 item dan resolusi redirect
+per link membuat satu siklus terlalu lama; feed terurut terbaru dulu jadi 30 teratas cukup.
 
 **DoD:** scheduler jalan 24 jam percobaan, artikel dari 10 media masuk DB tanpa duplikat,
 log rapi per media.
+
+Temuan uji siklus manual (25 Sep 2026): 9/10 media OK (151 artikel baru satu siklus).
+`republika` konsisten 403 Forbidden dari servernya (bukan transien; saat riset via curl
+masih 200). Opsi: (a) biarkan + pantau, (b) pindahkan ke fallback Google News via
+satu baris config. Menunggu keputusan Nucifera.
 
 ### Fase 2 — Processing: Embedding & Klasterisasi Isu
 
