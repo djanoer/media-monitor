@@ -18,31 +18,13 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from app import format as fmt  # noqa: E402
+from app import komponen as kmp  # noqa: E402
 from src.common.config import load_media, load_settings  # noqa: E402
 from src.storage import repository  # noqa: E402
 
 st.set_page_config(page_title="Media Monitor", layout="wide", page_icon="📰")
 
-CSS = """
-<style>
-.mm-card {border:1px solid rgba(255,255,255,0.09); border-radius:10px;
-  padding:12px 16px; margin-bottom:10px; background:rgba(255,255,255,0.02);}
-.mm-badge {color:#111; font-size:11px; font-weight:700; padding:2px 10px;
-  border-radius:20px; white-space:nowrap;}
-.mm-time {color:#9aa0a6; font-size:12px; margin-left:8px;}
-.mm-title {font-size:16px; font-weight:600; margin:8px 0 4px; line-height:1.4;}
-.mm-title a {color:#e8eaed; text-decoration:none;}
-.mm-title a:hover {text-decoration:underline;}
-.mm-summary {color:#9aa0a6; font-size:13px; line-height:1.55;}
-.mm-strip {display:flex; flex-wrap:wrap; gap:8px; margin:4px 0 16px;}
-.mm-pill {display:inline-flex; align-items:center; gap:6px; font-size:12px;
-  color:#e8eaed; border:1px solid rgba(255,255,255,0.12); border-radius:20px;
-  padding:4px 12px;}
-.mm-dot {width:8px; height:8px; border-radius:50%; display:inline-block;}
-.mm-ok {background:#3DDC84;} .mm-err {background:#FF6B6B;} .mm-na {background:#6c757d;}
-</style>
-"""
-st.markdown(CSS, unsafe_allow_html=True)
+st.markdown(kmp.CSS, unsafe_allow_html=True)
 
 settings = load_settings()
 db_path = ROOT / settings["storage"]["db_path"]
@@ -143,19 +125,4 @@ rows = repository.get_latest_articles(
 st.caption(f"{len(rows)} artikel ditampilkan")
 
 for r in rows:
-    judul = html_mod.escape((r["title"] or "(tanpa judul)").strip())
-    ringkas = html_mod.escape(fmt.bersihkan_html(r["summary"])[:280])
-    url = html_mod.escape(r["url"], quote=True)
-    badge = html_mod.escape(display.get(r["media"], r["media"]))
-    col = warna.get(r["media"], "#9aa0a6")
-    pub = r["published_at"]
-    st.markdown(
-        f'<div class="mm-card">'
-        f'<div><span class="mm-badge" style="background:{col}">{badge}</span>'
-        f'<span class="mm-time" title="{html_mod.escape(fmt.format_wita(pub))}">'
-        f"{html_mod.escape(fmt.waktu_relatif(pub))}</span></div>"
-        f'<div class="mm-title"><a href="{url}" target="_blank">{judul}</a></div>'
-        + (f'<div class="mm-summary">{ringkas}</div>' if ringkas else "")
-        + "</div>",
-        unsafe_allow_html=True,
-    )
+    st.markdown(kmp.kartu_artikel(r, display, warna), unsafe_allow_html=True)

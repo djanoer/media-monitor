@@ -256,3 +256,54 @@ def get_media_last_status(db_path: str | pathlib.Path) -> dict[str, dict]:
             " WHERE id IN (SELECT MAX(id) FROM fetch_media_log GROUP BY media)"
         )
         return {r["media"]: dict(r) for r in rows}
+
+
+def _klausa_keyword(keyword: str) -> tuple[str, list]:
+    """Klausa WHERE + params untuk pencarian keyword di judul/ringkasan."""
+    pola = f"%{keyword}%"
+    return "(title LIKE ? OR summary LIKE ?)", [pola, pola]
+
+
+def count_by_day_keyword(
+    db_path: str | pathlib.Path, keyword: str
+) -> dict[str, int]:
+    """Jumlah artikel per hari (YYYY-MM-DD dari published_at) untuk keyword.
+
+    Artikel tanpa published_at tidak masuk tren (asumsi tercatat).
+    """
+    klausa, params = _klausa_keyword(keyword)
+    with _connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT substr(published_at, 1, 10) AS tgl, COUNT(*) AS n"
+            " FROM articles"
+            f" WHERE published_at IS NOT NULL AND {klausa}"
+            " GROUP BY tgl ORDER BY tgl",
+            params,
+        )
+        return {r["tgl"]: r["n"] for r in rows}
+
+
+def count_by_media_keyword(
+    db_path: str | pathlib.Path, keyword: str
+) -> dict[str, int]:
+    """Jumlah artikel per media untuk keyword."""
+    klausa, params = _klausa_keyword(keyword)
+    with _connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT media, COUNT(*) AS n FROM articles"
+            f" WHERE {klausa} GROUP BY media",
+            params,
+        )
+        return {r["media"]: r["n"] for r in rows}
+
+
+def get_titles_keyword(
+    db_path: str | pathlib.Path, keyword: str, limit: int = 2000
+) -> list[str]:
+    """Judul-judul artikel yang mengandung keyword (untuk analisa kata terkait)."""
+    with _connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT title FROM articles WHERE title LIKE ? LIMIT ?",
+            (f"%{keyword}%", limit),
+        )
+        return [r["title"] for r in rows if r["title"]]

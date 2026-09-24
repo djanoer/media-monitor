@@ -193,6 +193,14 @@ Helper format murni di `app/format.py` (tanpa streamlit, di-unit-test).
 Bug yang diperbaiki: ringkasan RSS yang mengandung HTML mentah
 (contoh `<img .../>` Detik) kini ditampilkan sebagai teks bersih.
 
+Pembaruan 25 Sep 2026 (Analisa Keyword): halaman kedua
+`app/pages/2_Analisa_Keyword.py` (Streamlit multipage): metrik
+(total/rentang/media terlibat), tren volume harian, perbandingan antar media,
+15 kata tersering yang muncul bersama keyword (stopwords Sastrawi dibuang),
+dan daftar artikel dengan keyword di-highlight. Murni SQL + hitung kata,
+tanpa ML. Kartu artikel dipindah ke `app/komponen.py` bersama agar tidak
+duplikasi. Fungsi analisa teks murni di `app/analisa.py` (di-unit-test).
+
 ### Fase 2 — Processing: Embedding & Klasterisasi Isu
 
 - [ ] `src/processing/cleaning.py`: normalisasi judul/ringkasan (lowercase, hapus tag media)

@@ -126,6 +126,39 @@ def test_count_articles_since(tmp_path):
     assert repository.count_articles_since(db, lama) == 1
 
 
+def _artikel_berkeyword(url, media, title, published_at):
+    a = _artikel(url, media=media)
+    a.update(title=title, published_at=published_at)
+    return a
+
+
+def test_keyword_tren_media_judul(tmp_path):
+    db = tmp_path / "test.db"
+    repository.init_db(db)
+    data = [
+        _artikel_berkeyword("https://a.example/1", "tempo", "Rupiah menguat",
+                            "2026-09-24T01:00:00+00:00"),
+        _artikel_berkeyword("https://a.example/2", "tempo", "Rupiah melemah",
+                            "2026-09-24T02:00:00+00:00"),
+        _artikel_berkeyword("https://a.example/3", "kompas", "Dolar dan rupiah",
+                            "2026-09-25T01:00:00+00:00"),
+        _artikel_berkeyword("https://a.example/4", "kompas", "Cuaca cerah",
+                            "2026-09-25T02:00:00+00:00"),
+    ]
+    assert repository.insert_articles(db, data) == 4
+
+    tren = repository.count_by_day_keyword(db, "rupiah")
+    assert tren == {"2026-09-24": 2, "2026-09-25": 1}
+
+    per_media = repository.count_by_media_keyword(db, "rupiah")
+    assert per_media == {"tempo": 2, "kompas": 1}
+
+    judul = repository.get_titles_keyword(db, "rupiah")
+    assert len(judul) == 3
+
+    assert repository.count_by_day_keyword(db, "tidakada") == {}
+
+
 def test_pencatatan_run_dan_media(tmp_path):
     db = tmp_path / "test.db"
     repository.init_db(db)

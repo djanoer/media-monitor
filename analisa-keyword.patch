@@ -1,0 +1,479 @@
+From 104f8197c5c686ade10ef1adec97a9619e7d9429 Mon Sep 17 00:00:00 2001
+From: Kai <kai@localhost>
+Date: Fri, 25 Sep 2026 05:10:10 +0800
+Subject: [PATCH] halaman Analisa Keyword: tren, per media, kata terkait,
+ highlight
+
+---
+ ROADMAP.md                     |   8 +++
+ app/Home.py                    |  39 +-----------
+ app/analisa.py                 |  38 +++++++++++
+ app/komponen.py                |  66 ++++++++++++++++++++
+ app/pages/2_Analisa_Keyword.py | 111 +++++++++++++++++++++++++++++++++
+ src/storage/repository.py      |  51 +++++++++++++++
+ tests/test_analisa.py          |  35 +++++++++++
+ tests/test_storage.py          |  33 ++++++++++
+ 8 files changed, 345 insertions(+), 36 deletions(-)
+ create mode 100644 app/analisa.py
+ create mode 100644 app/komponen.py
+ create mode 100644 app/pages/2_Analisa_Keyword.py
+ create mode 100644 tests/test_analisa.py
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index 0376dd2..96bd097 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -193,6 +193,14 @@ Helper format murni di `app/format.py` (tanpa streamlit, di-unit-test).
+ Bug yang diperbaiki: ringkasan RSS yang mengandung HTML mentah
+ (contoh `<img .../>` Detik) kini ditampilkan sebagai teks bersih.
+ 
++Pembaruan 25 Sep 2026 (Analisa Keyword): halaman kedua
++`app/pages/2_Analisa_Keyword.py` (Streamlit multipage): metrik
++(total/rentang/media terlibat), tren volume harian, perbandingan antar media,
++15 kata tersering yang muncul bersama keyword (stopwords Sastrawi dibuang),
++dan daftar artikel dengan keyword di-highlight. Murni SQL + hitung kata,
++tanpa ML. Kartu artikel dipindah ke `app/komponen.py` bersama agar tidak
++duplikasi. Fungsi analisa teks murni di `app/analisa.py` (di-unit-test).
++
+ ### Fase 2 — Processing: Embedding & Klasterisasi Isu
+ 
+ - [ ] `src/processing/cleaning.py`: normalisasi judul/ringkasan (lowercase, hapus tag media)
+diff --git a/app/Home.py b/app/Home.py
+index 54b4f76..c67ee4f 100644
+--- a/app/Home.py
++++ b/app/Home.py
+@@ -18,31 +18,13 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
+ sys.path.insert(0, str(ROOT))
+ 
+ from app import format as fmt  # noqa: E402
++from app import komponen as kmp  # noqa: E402
+ from src.common.config import load_media, load_settings  # noqa: E402
+ from src.storage import repository  # noqa: E402
+ 
+ st.set_page_config(page_title="Media Monitor", layout="wide", page_icon="📰")
+ 
+-CSS = """
+-<style>
+-.mm-card {border:1px solid rgba(255,255,255,0.09); border-radius:10px;
+-  padding:12px 16px; margin-bottom:10px; background:rgba(255,255,255,0.02);}
+-.mm-badge {color:#111; font-size:11px; font-weight:700; padding:2px 10px;
+-  border-radius:20px; white-space:nowrap;}
+-.mm-time {color:#9aa0a6; font-size:12px; margin-left:8px;}
+-.mm-title {font-size:16px; font-weight:600; margin:8px 0 4px; line-height:1.4;}
+-.mm-title a {color:#e8eaed; text-decoration:none;}
+-.mm-title a:hover {text-decoration:underline;}
+-.mm-summary {color:#9aa0a6; font-size:13px; line-height:1.55;}
+-.mm-strip {display:flex; flex-wrap:wrap; gap:8px; margin:4px 0 16px;}
+-.mm-pill {display:inline-flex; align-items:center; gap:6px; font-size:12px;
+-  color:#e8eaed; border:1px solid rgba(255,255,255,0.12); border-radius:20px;
+-  padding:4px 12px;}
+-.mm-dot {width:8px; height:8px; border-radius:50%; display:inline-block;}
+-.mm-ok {background:#3DDC84;} .mm-err {background:#FF6B6B;} .mm-na {background:#6c757d;}
+-</style>
+-"""
+-st.markdown(CSS, unsafe_allow_html=True)
++st.markdown(kmp.CSS, unsafe_allow_html=True)
+ 
+ settings = load_settings()
+ db_path = ROOT / settings["storage"]["db_path"]
+@@ -143,19 +125,4 @@ rows = repository.get_latest_articles(
+ st.caption(f"{len(rows)} artikel ditampilkan")
+ 
+ for r in rows:
+-    judul = html_mod.escape((r["title"] or "(tanpa judul)").strip())
+-    ringkas = html_mod.escape(fmt.bersihkan_html(r["summary"])[:280])
+-    url = html_mod.escape(r["url"], quote=True)
+-    badge = html_mod.escape(display.get(r["media"], r["media"]))
+-    col = warna.get(r["media"], "#9aa0a6")
+-    pub = r["published_at"]
+-    st.markdown(
+-        f'<div class="mm-card">'
+-        f'<div><span class="mm-badge" style="background:{col}">{badge}</span>'
+-        f'<span class="mm-time" title="{html_mod.escape(fmt.format_wita(pub))}">'
+-        f"{html_mod.escape(fmt.waktu_relatif(pub))}</span></div>"
+-        f'<div class="mm-title"><a href="{url}" target="_blank">{judul}</a></div>'
+-        + (f'<div class="mm-summary">{ringkas}</div>' if ringkas else "")
+-        + "</div>",
+-        unsafe_allow_html=True,
+-    )
++    st.markdown(kmp.kartu_artikel(r, display, warna), unsafe_allow_html=True)
+diff --git a/app/analisa.py b/app/analisa.py
+new file mode 100644
+index 0000000..08e67ba
+--- /dev/null
++++ b/app/analisa.py
+@@ -0,0 +1,38 @@
++"""Analisa teks murni untuk halaman Analisa Keyword (tanpa streamlit).
++
++Isi: hitung kata yang sering muncul bersama sebuah keyword dari
++kumpulan judul artikel. Stopwords Bahasa Indonesia dari Sastrawi.
++"""
++
++from __future__ import annotations
++
++import re
++from collections import Counter
++
++TOKEN = re.compile(r"[a-z0-9]+")
++
++
++def tokenisasi(judul: str) -> list[str]:
++    """Judul -> token alfanumerik lowercase."""
++    return TOKEN.findall(judul.lower())
++
++
++def kata_terkait(
++    daftar_judul: list[str],
++    keyword: str,
++    stopwords: set[str] | frozenset,
++    top_n: int = 15,
++) -> list[tuple[str, int]]:
++    """Kata tersering yang muncul bersama keyword (di luar keyword itu sendiri).
++
++    Buang stopwords dan token pendek (<=2 huruf). Kembalikan
++    [(kata, jumlah), ...] terurut menurun.
++    """
++    kunci = {t for t in tokenisasi(keyword)}
++    hitung: Counter[str] = Counter()
++    for judul in daftar_judul:
++        for tok in set(tokenisasi(judul)):
++            if len(tok) <= 2 or tok in kunci or tok in stopwords:
++                continue
++            hitung[tok] += 1
++    return hitung.most_common(top_n)
+diff --git a/app/komponen.py b/app/komponen.py
+new file mode 100644
+index 0000000..c557370
+--- /dev/null
++++ b/app/komponen.py
+@@ -0,0 +1,66 @@
++"""Komponen tampilan bersama (kartu artikel, CSS, sorot keyword).
++
++Dipakai Home.py dan halaman-halaman di app/pages/ agar tidak duplikasi HTML.
++Fungsi di sini hanya merangkai string; tidak ada logika bisnis.
++"""
++
++from __future__ import annotations
++
++import html as html_mod
++import re
++
++from app import format as fmt
++
++CSS = """
++<style>
++.mm-card {border:1px solid rgba(255,255,255,0.09); border-radius:10px;
++  padding:12px 16px; margin-bottom:10px; background:rgba(255,255,255,0.02);}
++.mm-badge {color:#111; font-size:11px; font-weight:700; padding:2px 10px;
++  border-radius:20px; white-space:nowrap;}
++.mm-time {color:#9aa0a6; font-size:12px; margin-left:8px;}
++.mm-title {font-size:16px; font-weight:600; margin:8px 0 4px; line-height:1.4;}
++.mm-title a {color:#e8eaed; text-decoration:none;}
++.mm-title a:hover {text-decoration:underline;}
++.mm-summary {color:#9aa0a6; font-size:13px; line-height:1.55;}
++.mm-strip {display:flex; flex-wrap:wrap; gap:8px; margin:4px 0 16px;}
++.mm-pill {display:inline-flex; align-items:center; gap:6px; font-size:12px;
++  color:#e8eaed; border:1px solid rgba(255,255,255,0.12); border-radius:20px;
++  padding:4px 12px;}
++.mm-dot {width:8px; height:8px; border-radius:50%; display:inline-block;}
++.mm-ok {background:#3DDC84;} .mm-err {background:#FF6B6B;} .mm-na {background:#6c757d;}
++mark {background:#FFD43B; color:#111; border-radius:3px; padding:0 2px;}
++</style>
++"""
++
++
++def sorot(teks_escaped: str, keyword: str | None) -> str:
++    """Bungkus kemunculan keyword dengan <mark>. Terima teks yang SUDAH di-escape."""
++    if not keyword or not teks_escaped:
++        return teks_escaped
++    pola = re.compile(re.escape(html_mod.escape(keyword)), re.IGNORECASE)
++    return pola.sub(lambda m: f"<mark>{m.group(0)}</mark>", teks_escaped)
++
++
++def kartu_artikel(
++    r: dict,
++    display: dict[str, str],
++    warna: dict[str, str],
++    keyword: str | None = None,
++) -> str:
++    """Satu kartu artikel sebagai string HTML (sudah aman dari injeksi HTML)."""
++    judul = sorot(html_mod.escape((r["title"] or "(tanpa judul)").strip()), keyword)
++    ringkas = sorot(html_mod.escape(fmt.bersihkan_html(r["summary"])[:280]), keyword)
++    url = html_mod.escape(r["url"], quote=True)
++    badge = html_mod.escape(display.get(r["media"], r["media"]))
++    col = warna.get(r["media"], "#9aa0a6")
++    pub = r["published_at"]
++    isi = (
++        f'<div class="mm-card">'
++        f'<div><span class="mm-badge" style="background:{col}">{badge}</span>'
++        f'<span class="mm-time" title="{html_mod.escape(fmt.format_wita(pub))}">'
++        f"{html_mod.escape(fmt.waktu_relatif(pub))}</span></div>"
++        f'<div class="mm-title"><a href="{url}" target="_blank">{judul}</a></div>'
++    )
++    if ringkas:
++        isi += f'<div class="mm-summary">{ringkas}</div>'
++    return isi + "</div>"
+diff --git a/app/pages/2_Analisa_Keyword.py b/app/pages/2_Analisa_Keyword.py
+new file mode 100644
+index 0000000..f864d52
+--- /dev/null
++++ b/app/pages/2_Analisa_Keyword.py
+@@ -0,0 +1,111 @@
++"""Analisa Keyword: tren volume, perbandingan media, kata terkait, daftar artikel.
++
++Murni SQL + hitung kata (tanpa ML). Artikel tanpa published_at tidak masuk
++grafik tren. Sentimen & klasterisasi otomatis bukan bagian halaman ini
++(jatah Fase 2/5).
++"""
++
++from __future__ import annotations
++
++import pathlib
++import sys
++
++import streamlit as st
++from Sastrawi.StopWordRemover.StopWordRemoverFactory import (
++    StopWordRemoverFactory,
++)
++
++ROOT = pathlib.Path(__file__).resolve().parents[2]
++sys.path.insert(0, str(ROOT))
++
++from app import analisa  # noqa: E402
++from app import komponen as kmp  # noqa: E402
++from src.common.config import load_media, load_settings  # noqa: E402
++from src.storage import repository  # noqa: E402
++
++st.set_page_config(page_title="Analisa Keyword", layout="wide", page_icon="🔍")
++st.markdown(kmp.CSS, unsafe_allow_html=True)
++
++settings = load_settings()
++db_path = ROOT / settings["storage"]["db_path"]
++
++st.title("Analisa Keyword")
++st.caption("Tren volume, perbandingan media, dan kata terkait dari sebuah isu")
++
++if not db_path.exists():
++    st.warning("Database belum ada. Jalankan dulu run-all.bat.")
++    st.stop()
++
++
++@st.cache_resource
++def _stopwords() -> frozenset:
++    return frozenset(StopWordRemoverFactory().get_stop_words())
++
++
++media_list = load_media()
++display = {m["name"]: m["display"] for m in media_list}
++warna = {m["name"]: m.get("color", "#9aa0a6") for m in media_list}
++
++keyword = st.text_input("Keyword", placeholder="mis. timnas, BBM, rupiah").strip()
++
++if not keyword:
++    st.info("Ketik sebuah keyword untuk memulai analisa.")
++    st.stop()
++if len(keyword) < 3:
++    st.info("Keyword minimal 3 karakter.")
++    st.stop()
++
++tren = repository.count_by_day_keyword(db_path, keyword)
++per_media = repository.count_by_media_keyword(db_path, keyword)
++
++if not tren and not per_media:
++    st.info(f'Tidak ada artikel yang mengandung "{keyword}".')
++    st.stop()
++
++# ---------- metrik ----------
++total = sum(per_media.values())
++tgl = sorted(tren)
++rentang = f"{tgl[0]} s.d. {tgl[-1]}" if tgl else "-"
++m1, m2, m3 = st.columns(3)
++m1.metric("Total artikel", f"{total:,}".replace(",", "."))
++m2.metric("Rentang tanggal", rentang)
++m3.metric("Media terlibat", f"{len(per_media)}/{len(media_list)}")
++
++# ---------- tren harian ----------
++st.subheader("Tren volume pemberitaan")
++if tren:
++    st.line_chart(tren)
++    st.caption(
++        "Jumlah artikel per hari berdasarkan published_at. "
++        "Artikel tanpa tanggal tidak masuk grafik."
++    )
++else:
++    st.caption("Tidak ada data bertanggal untuk keyword ini.")
++
++# ---------- per media ----------
++st.subheader("Perbandingan antar media")
++if per_media:
++    st.bar_chart({display.get(k, k): v for k, v in per_media.items()})
++
++# ---------- kata terkait ----------
++st.subheader("Kata yang sering muncul bersama")
++judul_list = repository.get_titles_keyword(db_path, keyword)
++terkait = analisa.kata_terkait(judul_list, keyword, _stopwords(), top_n=15)
++if terkait:
++    st.bar_chart(dict(terkait))
++    st.caption(
++        f"Dihitung dari {len(judul_list)} judul, stopwords Bahasa Indonesia dibuang."
++    )
++else:
++    st.caption("Tidak ada kata terkait yang signifikan.")
++
++# ---------- daftar artikel ----------
++st.subheader("Artikel terkait")
++batas = st.slider("Jumlah artikel", 10, 200, 50)
++rows = repository.get_latest_articles(db_path, keyword=keyword, limit=batas)
++st.caption(f"{len(rows)} artikel ditampilkan, keyword di-highlight kuning")
++for r in rows:
++    st.markdown(
++        kmp.kartu_artikel(r, display, warna, keyword=keyword),
++        unsafe_allow_html=True,
++    )
+diff --git a/src/storage/repository.py b/src/storage/repository.py
+index 2aa12c5..57805b4 100644
+--- a/src/storage/repository.py
++++ b/src/storage/repository.py
+@@ -256,3 +256,54 @@ def get_media_last_status(db_path: str | pathlib.Path) -> dict[str, dict]:
+             " WHERE id IN (SELECT MAX(id) FROM fetch_media_log GROUP BY media)"
+         )
+         return {r["media"]: dict(r) for r in rows}
++
++
++def _klausa_keyword(keyword: str) -> tuple[str, list]:
++    """Klausa WHERE + params untuk pencarian keyword di judul/ringkasan."""
++    pola = f"%{keyword}%"
++    return "(title LIKE ? OR summary LIKE ?)", [pola, pola]
++
++
++def count_by_day_keyword(
++    db_path: str | pathlib.Path, keyword: str
++) -> dict[str, int]:
++    """Jumlah artikel per hari (YYYY-MM-DD dari published_at) untuk keyword.
++
++    Artikel tanpa published_at tidak masuk tren (asumsi tercatat).
++    """
++    klausa, params = _klausa_keyword(keyword)
++    with _connect(db_path) as conn:
++        rows = conn.execute(
++            "SELECT substr(published_at, 1, 10) AS tgl, COUNT(*) AS n"
++            " FROM articles"
++            f" WHERE published_at IS NOT NULL AND {klausa}"
++            " GROUP BY tgl ORDER BY tgl",
++            params,
++        )
++        return {r["tgl"]: r["n"] for r in rows}
++
++
++def count_by_media_keyword(
++    db_path: str | pathlib.Path, keyword: str
++) -> dict[str, int]:
++    """Jumlah artikel per media untuk keyword."""
++    klausa, params = _klausa_keyword(keyword)
++    with _connect(db_path) as conn:
++        rows = conn.execute(
++            "SELECT media, COUNT(*) AS n FROM articles"
++            f" WHERE {klausa} GROUP BY media",
++            params,
++        )
++        return {r["media"]: r["n"] for r in rows}
++
++
++def get_titles_keyword(
++    db_path: str | pathlib.Path, keyword: str, limit: int = 2000
++) -> list[str]:
++    """Judul-judul artikel yang mengandung keyword (untuk analisa kata terkait)."""
++    with _connect(db_path) as conn:
++        rows = conn.execute(
++            "SELECT title FROM articles WHERE title LIKE ? LIMIT ?",
++            (f"%{keyword}%", limit),
++        )
++        return [r["title"] for r in rows if r["title"]]
+diff --git a/tests/test_analisa.py b/tests/test_analisa.py
+new file mode 100644
+index 0000000..61230c3
+--- /dev/null
++++ b/tests/test_analisa.py
+@@ -0,0 +1,35 @@
++"""Test analisa teks murni (app/analisa.py)."""
++
++import sys
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
++
++from app import analisa
++
++STOP = frozenset({"yang", "dan", "di", "ke", "dari"})
++
++
++def test_kata_terkait():
++    judul = [
++        "Rupiah menguat terhadap dolar AS",
++        "Rupiah melemah, dolar menguat tajam",
++        "Harga BBM naik, rupiah tertekan",
++    ]
++    hasil = dict(analisa.kata_terkait(judul, "rupiah", STOP, top_n=10))
++    assert "menguat" in hasil and hasil["menguat"] == 2
++    assert "dolar" in hasil and hasil["dolar"] == 2
++    # keyword itu sendiri dan stopwords tidak ikut
++    assert "rupiah" not in hasil
++    assert "yang" not in hasil and "dan" not in hasil
++    # token pendek dibuang
++    assert "as" not in hasil
++
++
++def test_kata_terkait_kosong():
++    assert analisa.kata_terkait([], "rupiah", STOP) == []
++    # keyword tidak ada di judul -> semua kata non-stopword dihitung
++    assert analisa.kata_terkait(["Rupiah menguat"], "bbm", STOP) == [
++        ("rupiah", 1),
++        ("menguat", 1),
++    ]
+diff --git a/tests/test_storage.py b/tests/test_storage.py
+index 584b5b3..1edf93b 100644
+--- a/tests/test_storage.py
++++ b/tests/test_storage.py
+@@ -126,6 +126,39 @@ def test_count_articles_since(tmp_path):
+     assert repository.count_articles_since(db, lama) == 1
+ 
+ 
++def _artikel_berkeyword(url, media, title, published_at):
++    a = _artikel(url, media=media)
++    a.update(title=title, published_at=published_at)
++    return a
++
++
++def test_keyword_tren_media_judul(tmp_path):
++    db = tmp_path / "test.db"
++    repository.init_db(db)
++    data = [
++        _artikel_berkeyword("https://a.example/1", "tempo", "Rupiah menguat",
++                            "2026-09-24T01:00:00+00:00"),
++        _artikel_berkeyword("https://a.example/2", "tempo", "Rupiah melemah",
++                            "2026-09-24T02:00:00+00:00"),
++        _artikel_berkeyword("https://a.example/3", "kompas", "Dolar dan rupiah",
++                            "2026-09-25T01:00:00+00:00"),
++        _artikel_berkeyword("https://a.example/4", "kompas", "Cuaca cerah",
++                            "2026-09-25T02:00:00+00:00"),
++    ]
++    assert repository.insert_articles(db, data) == 4
++
++    tren = repository.count_by_day_keyword(db, "rupiah")
++    assert tren == {"2026-09-24": 2, "2026-09-25": 1}
++
++    per_media = repository.count_by_media_keyword(db, "rupiah")
++    assert per_media == {"tempo": 2, "kompas": 1}
++
++    judul = repository.get_titles_keyword(db, "rupiah")
++    assert len(judul) == 3
++
++    assert repository.count_by_day_keyword(db, "tidakada") == {}
++
++
+ def test_pencatatan_run_dan_media(tmp_path):
+     db = tmp_path / "test.db"
+     repository.init_db(db)
+-- 
+2.43.0
+
