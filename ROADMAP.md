@@ -155,9 +155,16 @@ per link membuat satu siklus terlalu lama; feed terurut terbaru dulu jadi 30 ter
 log rapi per media.
 
 Temuan uji siklus manual (25 Sep 2026): 9/10 media OK (151 artikel baru satu siklus).
-`republika` konsisten 403 Forbidden dari servernya (bukan transien; saat riset via curl
-masih 200). Opsi: (a) biarkan + pantau, (b) pindahkan ke fallback Google News via
-satu baris config. Menunggu keputusan Nucifera.
+
+- `republika`: RSS native konsisten 403 Forbidden -> dipindah ke fallback Google News
+  (commit `95926ff`, hanya ubah `config/media.yaml`, tanpa ubah kode).
+- URL artikel Google News (`news.google.com/rss/articles/...`) TIDAK bisa di-resolve ke URL
+  penerbit via HTTP redirect maupun decode token (format token baru bersifat opak).
+  Namun uji empiris membuktikan token stabil per artikel antar fetch (100/100 sama dalam
+  selang 90 detik), jadi tetap layak sebagai kunci dedup; link google juga berfungsi
+  sebagai tautan sumber (browser me-redirect otomatis).
+- Sebagai jaring pengaman bila token berubah antar siklus, dedup punya lapis kedua:
+  pasangan (media, judul) yang sama dianggap artikel yang sama (commit `37e558b`).
 
 ### Fase 2 — Processing: Embedding & Klasterisasi Isu
 
