@@ -65,26 +65,72 @@ def init_db(db_path: str | pathlib.Path) -> None:
 
 
 def insert_articles(db_path: str | pathlib.Path, articles: list[dict]) -> int:
-    """Simpan artikel; URL yang sudah ada dilewati (dedup).
+    """Simpan artikel; yang sudah ada dilewati (dedup).
+
+    Dua lapis dedup:
+    1. URL sudah ada -> skip (kunci utama).
+    2. Pasangan (media, judul) sudah ada -> skip. Ini antisipasi token URL
+       Google News yang bisa berubah antar siklus, sementara judul artikel stabil.
 
     Kembalikan jumlah artikel BARU yang masuk.
     """
     if not articles:
         return 0
     now = _utcnow()
-    rows = [
-        (
-            a["url"],
-            a["media"],
-            a.get("title"),
-            a.get("summary"),
-            a.get("link"),
-            a.get("published_at"),
-            now,
-        )
-        for a in articles
-    ]
     with _connect(db_path) as conn:
+        # lapis 1: URL
+        ph = ",".join("?" for _ in articles)
+        existing_urls = {
+            r[0]
+            for r in conn.execute(
+                f"SELECT url FROM articles WHERE url IN ({ph})",
+                [a["url"] for a in articles],
+            )
+        }
+        candidates = [a for a in articles if a["url"] not in existing_urls]
+
+        # lapis 2: (media, judul)
+        pairs = {
+            (a["media"], a.get("title") or "")
+            for a in candidates
+            if (a.get("title") or "").strip()
+        }
+        existing_pairs: set[tuple[str, str]] = set()
+        if pairs:
+            ph2 = ",".join("(?,?)" for _ in pairs)
+            params = [x for p in pairs for x in p]
+            existing_pairs = {
+                (r[0], r[1])
+                for r in conn.execute(
+                    f"SELECT media, title FROM articles WHERE (media, title) IN ({ph2})",
+                    params,
+                )
+            }
+
+        fresh: list[dict] = []
+        seen_pairs = set(existing_pairs)
+        for a in candidates:
+            title = (a.get("title") or "").strip()
+            key = (a["media"], a.get("title") or "")
+            if title and key in seen_pairs:
+                continue
+            seen_pairs.add(key)
+            fresh.append(a)
+
+        if not fresh:
+            return 0
+        rows = [
+            (
+                a["url"],
+                a["media"],
+                a.get("title"),
+                a.get("summary"),
+                a.get("link"),
+                a.get("published_at"),
+                now,
+            )
+            for a in fresh
+        ]
         before = conn.total_changes
         conn.executemany(
             "INSERT OR IGNORE INTO articles"

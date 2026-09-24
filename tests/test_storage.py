@@ -40,6 +40,23 @@ def test_insert_dedup_berdasarkan_url(tmp_path):
     assert repository.count_articles(db) == 3
 
 
+def test_insert_dedup_lapis_kedua_judul_sama_url_beda(tmp_path):
+    # simulasi token Google News berubah: URL beda, judul sama -> tetap dianggap duplikat
+    db = tmp_path / "test.db"
+    repository.init_db(db)
+    a1 = _artikel("https://news.google.com/rss/articles/TOKEN1", media="kompas")
+    a1["title"] = "Judul Sama Persis"
+    assert repository.insert_articles(db, [a1]) == 1
+    a2 = _artikel("https://news.google.com/rss/articles/TOKEN2", media="kompas")
+    a2["title"] = "Judul Sama Persis"
+    assert repository.insert_articles(db, [a2]) == 0
+    # media beda + judul sama = artikel berbeda, tetap masuk
+    a3 = _artikel("https://news.google.com/rss/articles/TOKEN3", media="detik")
+    a3["title"] = "Judul Sama Persis"
+    assert repository.insert_articles(db, [a3]) == 1
+    assert repository.count_articles(db) == 2
+
+
 def test_insert_kosong_tidak_error(tmp_path):
     db = tmp_path / "test.db"
     repository.init_db(db)
