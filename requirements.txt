@@ -1,3 +1,5 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
 # Dependensi Media Monitor - versi di-pin (Fase 0, 2026-09-25)
 # torch = build CPU dari https://download.pytorch.org/whl/cpu
 APScheduler==3.11.3
