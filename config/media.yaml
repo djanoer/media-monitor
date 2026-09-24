@@ -1,0 +1,53 @@
+# Daftar media yang dipantau. Tambah media = tambah blok di bawah ini, tanpa ubah kode.
+# type: native = RSS resmi media | gnews = fallback Google News RSS (ikuti redirect ke URL asli)
+media:
+  - name: tempo
+    display: Tempo
+    feed: "https://rss.tempo.co/"
+    type: native
+    active: true
+  - name: cnn_indonesia
+    display: CNN Indonesia
+    feed: "https://www.cnnindonesia.com/rss"
+    type: native
+    active: true
+  - name: antara
+    display: Antara
+    feed: "https://www.antaranews.com/rss/terkini.xml"
+    type: native
+    active: true
+  - name: republika
+    display: Republika
+    feed: "https://www.republika.co.id/rss"
+    type: native
+    active: true
+  - name: bisnis_indonesia
+    display: Bisnis Indonesia
+    feed: "https://rss.bisnis.com"
+    type: native
+    active: true
+  - name: kompas
+    display: Kompas
+    feed: "https://news.google.com/rss/search?q=site:kompas.com&hl=id&gl=ID&ceid=ID:id"
+    type: gnews
+    active: true
+  - name: detik
+    display: Detik
+    feed: "https://news.google.com/rss/search?q=site:detik.com&hl=id&gl=ID&ceid=ID:id"
+    type: gnews
+    active: true
+  - name: liputan6
+    display: Liputan6
+    feed: "https://news.google.com/rss/search?q=site:liputan6.com&hl=id&gl=ID&ceid=ID:id"
+    type: gnews
+    active: true
+  - name: jawa_pos
+    display: Jawa Pos
+    feed: "https://news.google.com/rss/search?q=site:jawapos.com&hl=id&gl=ID&ceid=ID:id"
+    type: gnews
+    active: true
+  - name: kumparan
+    display: Kumparan
+    feed: "https://news.google.com/rss/search?q=site:kumparan.com&hl=id&gl=ID&ceid=ID:id"
+    type: gnews
+    active: true

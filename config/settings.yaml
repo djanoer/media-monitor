@@ -1,0 +1,17 @@
+# Pengaturan umum. Nilai di sini bisa diubah lewat halaman Pengaturan (Fase 4) tanpa edit file.
+fetch:
+  interval_hours: 1
+  delay_between_media_seconds: 3
+  timeout_seconds: 20
+  user_agent: "MediaMonitor/0.1 (+personal research project)"
+
+retention:
+  retention_days: 30  # dinamis, bisa diubah via UI
+
+clustering:
+  embedding_model: "intfloat/multilingual-e5-base"
+  window_hours: 24
+  min_articles_per_issue: 3
+
+storage:
+  db_path: "data/media_monitor.db"

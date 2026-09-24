@@ -1,0 +1,12 @@
+# Dependensi Media Monitor - versi di-pin (Fase 0, 2026-09-25)
+# torch = build CPU dari https://download.pytorch.org/whl/cpu
+APScheduler==3.11.3
+feedparser==6.0.14
+pytest==9.1.1
+PyYAML==6.0.3
+requests==2.34.2
+Sastrawi==1.0.1
+scikit-learn==1.9.1
+sentence-transformers==6.1.0
+streamlit==1.64.0
+torch==2.14.0+cpu
