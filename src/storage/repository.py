@@ -183,3 +183,43 @@ def count_articles(db_path: str | pathlib.Path) -> int:
     with _connect(db_path) as conn:
         row = conn.execute("SELECT COUNT(*) AS n FROM articles").fetchone()
         return row["n"]
+
+
+def count_by_media(db_path: str | pathlib.Path) -> dict[str, int]:
+    """Jumlah artikel per media (read-only, untuk viewer/dashboard)."""
+    with _connect(db_path) as conn:
+        return {
+            r["media"]: r["n"]
+            for r in conn.execute("SELECT media, COUNT(*) AS n FROM articles GROUP BY media")
+        }
+
+
+def get_latest_articles(
+    db_path: str | pathlib.Path,
+    media: str | None = None,
+    keyword: str | None = None,
+    limit: int = 200,
+) -> list[dict]:
+    """Ambil artikel terbaru (read-only, untuk viewer/dashboard).
+
+    Urut berdasarkan published_at menurun; yang tanpa tanggal di akhir.
+    keyword dicocokkan ke judul/ringkasan (LIKE, case-insensitive ASCII).
+    """
+    with _connect(db_path) as conn:
+        sql = (
+            "SELECT url, media, title, summary, published_at, fetched_at"
+            " FROM articles"
+        )
+        clauses: list[str] = []
+        params: list = []
+        if media:
+            clauses.append("media = ?")
+            params.append(media)
+        if keyword:
+            clauses.append("(title LIKE ? OR summary LIKE ?)")
+            params += [f"%{keyword}%", f"%{keyword}%"]
+        if clauses:
+            sql += " WHERE " + " AND ".join(clauses)
+        sql += " ORDER BY published_at DESC, id DESC LIMIT ?"
+        params.append(limit)
+        return [dict(r) for r in conn.execute(sql, params)]

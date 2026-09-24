@@ -63,6 +63,39 @@ def test_insert_kosong_tidak_error(tmp_path):
     assert repository.insert_articles(db, []) == 0
 
 
+def test_get_latest_articles_filter_dan_urut(tmp_path):
+    db = tmp_path / "test.db"
+    repository.init_db(db)
+    a1 = _artikel("https://a.example/1", media="tempo")
+    a1.update(title="Rupiah menguat", published_at="2026-09-25T02:00:00Z")
+    a2 = _artikel("https://a.example/2", media="kompas")
+    a2.update(title="Timnas menang", published_at="2026-09-25T03:00:00Z")
+    a3 = _artikel("https://a.example/3", media="tempo")
+    a3.update(title="Rupiah melemah", published_at="2026-09-25T01:00:00Z")
+    assert repository.insert_articles(db, [a1, a2, a3]) == 3
+
+    semua = repository.get_latest_articles(db)
+    assert [r["title"] for r in semua] == ["Timnas menang", "Rupiah menguat", "Rupiah melemah"]
+
+    tempo = repository.get_latest_articles(db, media="tempo")
+    assert {r["title"] for r in tempo} == {"Rupiah menguat", "Rupiah melemah"}
+
+    cari = repository.get_latest_articles(db, keyword="rupiah")
+    assert {r["title"] for r in cari} == {"Rupiah menguat", "Rupiah melemah"}
+
+    satu = repository.get_latest_articles(db, limit=1)
+    assert len(satu) == 1 and satu[0]["title"] == "Timnas menang"
+
+
+def test_count_by_media(tmp_path):
+    db = tmp_path / "test.db"
+    repository.init_db(db)
+    repository.insert_articles(db, [_artikel("https://a.example/1", media="tempo"),
+                                   _artikel("https://a.example/2", media="tempo"),
+                                   _artikel("https://a.example/3", media="kompas")])
+    assert repository.count_by_media(db) == {"tempo": 2, "kompas": 1}
+
+
 def test_pencatatan_run_dan_media(tmp_path):
     db = tmp_path / "test.db"
     repository.init_db(db)

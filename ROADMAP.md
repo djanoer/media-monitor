@@ -166,6 +166,16 @@ Temuan uji siklus manual (25 Sep 2026): 9/10 media OK (151 artikel baru satu sik
 - Sebagai jaring pengaman bila token berubah antar siklus, dedup punya lapis kedua:
   pasangan (media, judul) yang sama dianggap artikel yang sama (commit `37e558b`).
 
+### Viewer sementara (pra-Fase 3) [DIBANGUN 25 Sep 2026 atas permintaan Nucifera]
+
+Nucifera ingin melihat data sebelum dashboard Fase 3 jadi. Dibangun viewer
+baca-saja minimal: `app/Home.py` (daftar artikel terbaru + filter media +
+pencarian kata kunci + grafik jumlah per media), dibaca lewat dua fungsi
+query baru di `src/storage/repository.py` (`get_latest_articles`,
+`count_by_media`). Diluncurkan di Windows via `run-viewer.bat`
+(double-click, browser terbuka otomatis). Struktur ini yang akan berkembang
+menjadi dashboard Fase 3, bukan kode buangan.
+
 ### Fase 2 — Processing: Embedding & Klasterisasi Isu
 
 - [ ] `src/processing/cleaning.py`: normalisasi judul/ringkasan (lowercase, hapus tag media)
