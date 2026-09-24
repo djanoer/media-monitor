@@ -18,8 +18,8 @@ media:
     active: true
   - name: republika
     display: Republika
-    feed: "https://www.republika.co.id/rss"
-    type: native
+    feed: "https://news.google.com/rss/search?q=site:republika.co.id&hl=id&gl=ID&ceid=ID:id"
+    type: gnews
     active: true
   - name: bisnis_indonesia
     display: Bisnis Indonesia
