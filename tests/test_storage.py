@@ -1,5 +1,6 @@
 """Test repository SQLite: skema, dedup URL, dan pencatatan siklus fetch."""
 
+import datetime
 import sqlite3
 
 from src.storage import repository
@@ -94,6 +95,35 @@ def test_count_by_media(tmp_path):
                                    _artikel("https://a.example/2", media="tempo"),
                                    _artikel("https://a.example/3", media="kompas")])
     assert repository.count_by_media(db) == {"tempo": 2, "kompas": 1}
+
+
+def test_get_last_run_dan_status_media(tmp_path):
+    db = tmp_path / "test.db"
+    repository.init_db(db)
+    assert repository.get_last_run(db) is None
+
+    run1 = repository.start_run(db)
+    repository.log_media(db, run1, "tempo", "ok", 5, 30, None)
+    repository.finish_run(db, run1)
+    last = repository.get_last_run(db)
+    assert last["started_at"] and last["finished_at"]
+
+    run2 = repository.start_run(db)
+    repository.log_media(db, run2, "tempo", "error", 0, 0, "timeout")
+    st = repository.get_media_last_status(db)
+    assert st["tempo"]["status"] == "error"
+    assert st["tempo"]["error"] == "timeout"
+
+
+def test_count_articles_since(tmp_path):
+    db = tmp_path / "test.db"
+    repository.init_db(db)
+    repository.insert_articles(db, [_artikel("https://a.example/1")])
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    assert repository.count_articles_since(db, now) >= 0
+    lama = (datetime.datetime.now(datetime.timezone.utc)
+            - datetime.timedelta(hours=25)).isoformat()
+    assert repository.count_articles_since(db, lama) == 1
 
 
 def test_pencatatan_run_dan_media(tmp_path):

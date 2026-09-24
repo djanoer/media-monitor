@@ -182,6 +182,17 @@ port 8501 dipakai aplikasi analisa lain di laptop Nucifera). File
 `run-application.bat`/`run-viewer.bat` yang terpisah dihapus agar tidak
 membingungkan. `uji-sekali.bat` tetap ada untuk testing.
 
+Pembaruan 25 Sep 2026 (Command Center, tema gelap): atas pilihan Nucifera
+(Arah A), viewer dirombak menjadi command center: bar status kesehatan
+scheduler (peringatan bila fetch terakhir > 90 menit), 4 metrik
+(total, 24 jam terakhir, media OK, fetch terakhir), strip status per media
+dengan tooltip, kartu artikel (badge warna per media dari `media.yaml`,
+waktu relatif + tooltip WITA, ringkasan dibersihkan dari tag HTML).
+Warna badge config-driven via kunci `color` di `media.yaml`.
+Helper format murni di `app/format.py` (tanpa streamlit, di-unit-test).
+Bug yang diperbaiki: ringkasan RSS yang mengandung HTML mentah
+(contoh `<img .../>` Detik) kini ditampilkan sebagai teks bersih.
+
 ### Fase 2 — Processing: Embedding & Klasterisasi Isu
 
 - [ ] `src/processing/cleaning.py`: normalisasi judul/ringkasan (lowercase, hapus tag media)

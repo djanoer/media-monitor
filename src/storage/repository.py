@@ -223,3 +223,36 @@ def get_latest_articles(
         sql += " ORDER BY published_at DESC, id DESC LIMIT ?"
         params.append(limit)
         return [dict(r) for r in conn.execute(sql, params)]
+
+
+def get_last_run(db_path: str | pathlib.Path) -> dict | None:
+    """Siklus fetch terakhir (started_at, finished_at) atau None bila belum ada."""
+    with _connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT started_at, finished_at FROM fetch_runs ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def count_articles_since(db_path: str | pathlib.Path, since_iso: str) -> int:
+    """Jumlah artikel dengan fetched_at >= since_iso (string ISO UTC)."""
+    with _connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS n FROM articles WHERE fetched_at >= ?", (since_iso,)
+        ).fetchone()
+        return row["n"]
+
+
+def get_media_last_status(db_path: str | pathlib.Path) -> dict[str, dict]:
+    """Status fetch terakhir per media.
+
+    Kembalikan {media: {status, new_articles, total_entries, error, fetched_at}}.
+    Dipakai bar status command center.
+    """
+    with _connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT media, status, new_articles, total_entries, error, fetched_at"
+            " FROM fetch_media_log"
+            " WHERE id IN (SELECT MAX(id) FROM fetch_media_log GROUP BY media)"
+        )
+        return {r["media"]: dict(r) for r in rows}
