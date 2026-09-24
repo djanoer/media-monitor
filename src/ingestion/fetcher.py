@@ -37,13 +37,18 @@ def normalize_entry(media_name: str, entry: dict, final_url: str) -> dict:
     }
 
 
-def fetch_media(media: dict, client: HttpClient) -> list[dict]:
+def fetch_media(
+    media: dict,
+    client: HttpClient,
+    max_items: int | None = None,
+) -> list[dict]:
     """Ambil satu feed, kembalikan daftar artikel ternormalisasi.
 
     - Feed diambil via HttpClient (retry, timeout, user-agent konsisten),
       lalu di-parse dari kontennya (feedparser tidak melakukan HTTP sendiri).
     - Untuk type 'gnews', link news.google.com di-resolve ke URL artikel asli.
     - Duplikat URL dalam satu batch hanya diambil sekali.
+    - max_items membatasi item terbaru yang diproses (feed terurut terbaru dulu).
     """
     name = media["name"]
     resp = client.get(media["feed"])
@@ -53,7 +58,8 @@ def fetch_media(media: dict, client: HttpClient) -> list[dict]:
         raise ValueError(f"feed {name} tidak menghasilkan item: {detail}")
 
     seen: dict[str, dict] = {}
-    for entry in parsed.entries:
+    entries = parsed.entries[:max_items] if max_items else parsed.entries
+    for entry in entries:
         raw_link = (entry.get("link") or "").strip()
         if not raw_link:
             continue

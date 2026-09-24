@@ -77,6 +77,12 @@ def test_fetch_media_gnews_resolve_ke_url_asli():
     assert all(a["link"].startswith("https://contoh.example/") for a in hasil)
 
 
+def test_fetch_media_batas_max_items():
+    media = {"name": "tempo", "feed": "https://x.example/rss", "type": "native"}
+    hasil = fetch_media(media, FakeClient(), max_items=2)
+    assert len(hasil) == 2
+
+
 def test_feed_kosong_memicu_error():
     class EmptyClient(FakeClient):
         def get(self, url):

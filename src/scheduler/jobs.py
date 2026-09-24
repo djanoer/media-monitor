@@ -31,6 +31,7 @@ def fetch_cycle(
     fetch_cfg = settings.get("fetch", {})
     db_path = settings["storage"]["db_path"]
     delay = fetch_cfg.get("delay_between_media_seconds", 3)
+    max_items = fetch_cfg.get("max_articles_per_media")
 
     repository.init_db(db_path)
     client = HttpClient(
@@ -46,7 +47,7 @@ def fetch_cycle(
             if i > 0:
                 time.sleep(delay)  # jeda antar media, hindari rate-limit
             try:
-                articles = fetch_media(media, client)
+                articles = fetch_media(media, client, max_items=max_items)
                 new_count = repository.insert_articles(db_path, articles)
                 status, error = "ok", None
             except Exception as exc:

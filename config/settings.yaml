@@ -4,6 +4,10 @@ fetch:
   delay_between_media_seconds: 3
   timeout_seconds: 20
   user_agent: "MediaMonitor/0.1 (+personal research project)"
+  # batasi item per media per siklus (feed diurutkan terbaru dulu).
+  # Tanpa batas, feed Google News (100 item) membuat satu siklus terlalu lama
+  # karena setiap link harus di-resolve ke URL artikel asli.
+  max_articles_per_media: 30
 
 retention:
   retention_days: 30  # dinamis, bisa diubah via UI

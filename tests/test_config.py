@@ -22,5 +22,6 @@ def test_setiap_media_punya_field_wajib():
 def test_settings_punya_kunci_wajib():
     s = load_settings()
     assert s["fetch"]["interval_hours"] == 1
+    assert s["fetch"]["max_articles_per_media"] == 30
     assert s["retention"]["retention_days"] == 30
     assert s["storage"]["db_path"]
