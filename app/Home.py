@@ -80,26 +80,27 @@ st.markdown("""
   border-top:1px solid rgba(255,255,255,.06);}
 .mm-section-title {font-size:17px; font-weight:700; color:#e6ecff;}
 .mm-section-sub {font-size:11.5px; color:#5b6b8c;}
-/* kartu utama per media: tanpa border, compact */
+/* kartu utama per media ala referensi: berbingkai + hover terangkat */
 div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] {
-  background:transparent;
-  border:none;
-  padding:0 2px;
-  margin-bottom:24px;}
-/* kartu artikel (border wrapper di dalam border wrapper): elegan,
-   ramping, ada jarak antar kartu. Selektor lebih spesifik + ditulis
-   setelah aturan kartu utama sehingga menang. */
+  background:linear-gradient(180deg,#111d3c,#0e1730);
+  border:1px solid rgba(90,130,255,.18); border-radius:14px;
+  padding:10px 12px; margin-bottom:28px;
+  transition:transform .15s ease, border-color .15s ease;}
+div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"]:hover {
+  transform:translateY(-3px); border-color:#33406b;}
+/* baris artikel ala referensi (.nrow): tanpa ringkasan,
+   meta (waktu + chips) di atas judul. Selektor lebih spesifik +
+   ditulis setelah aturan kartu utama sehingga menang. */
 div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"] {
-  background:rgba(255,255,255,.03);
-  border:none; border-left:3px solid #8ea0c9; border-radius:10px;
-  padding:7px 11px; margin:0 0 8px; transition:.15s;}
+  background:rgba(255,255,255,.025);
+  border:1px solid transparent; border-left:3px solid #8ea0c9;
+  border-radius:9px; padding:7px 8px; margin:0 0 6px; transition:.15s;}
 div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"]:hover {
   background:rgba(255,255,255,.06); transform:translateY(-1px);}
-/* ringkasan 2 baris + badges di bawah judul (ala publish) */
-.mi-sum {color:#9ca3af; font-size:12px; line-height:1.5; margin:4px 0 2px;
-  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
-  overflow:hidden;}
-.mi-badges {margin-top:6px;}
+/* baris meta artikel ala referensi: waktu + chips */
+.mi-meta {display:flex; align-items:center; gap:4px; flex-wrap:wrap;
+  margin-bottom:3px;}
+.mi-time {font-size:9.5px; color:#8ea0c9; letter-spacing:.4px;}
 /* garis kiri kartu artikel ikut level risiko (penanda .mi-risk di dalam) */
 .mi-risk {display:none;}
 div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"]:has(.mi-risk[data-r="Tinggi"]) {
@@ -519,26 +520,22 @@ for _r in range(0, len(names_grid), 4):
                         with st.container(border=True):
                             # Penanda level risiko (disembunyikan): dipakai
                             # CSS :has() untuk garis kiri kartu ikut warna
-                            # risiko. Susunan isi ala publish: judul ->
-                            # ringkasan -> badges.
+                            # risiko. Susunan persis referensi: meta
+                            # (waktu + chips) di atas judul, tanpa ringkasan.
+                            _wkt = kmp.waktu_pendek(a.get("published_at"))
+                            _wkt_html = (f'<span class="mi-time">{_wkt}</span>'
+                                         if _wkt else "")
                             st.markdown(
                                 f'<div class="mi-risk" '
-                                f'data-r="{a.get("risiko", "")}"></div>',
+                                f'data-r="{a.get("risiko", "")}"></div>'
+                                f'<div class="mi-meta">{_wkt_html}'
+                                f'{kmp.pills_artikel(a)}</div>',
                                 unsafe_allow_html=True)
                             _key = ("dlg-" + hashlib.md5(
                                 a["url"].encode()).hexdigest()[:16])
                             if st.button(a.get("title") or "(tanpa judul)",
                                          key=_key):
                                 _dialog_artikel(a)
-                            _cup = kmp.cuplikan(a)
-                            if _cup:
-                                st.markdown(
-                                    f'<div class="mi-sum">{_cup}</div>',
-                                    unsafe_allow_html=True)
-                            st.markdown(
-                                f'<div class="mi-badges">'
-                                f'{kmp.pills_artikel(a)}</div>',
-                                unsafe_allow_html=True)
 
 # ---------- footer ----------
 st.markdown(
