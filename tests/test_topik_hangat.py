@@ -175,3 +175,29 @@ def test_ambil_trends_jeda_antar_request(monkeypatch):
     tidur.clear()
     respon_publik.ambil_trends(["x"], jeda_detik=0)
     assert tidur == []
+
+
+def test_lock_minta_dua_kali_ditolak(tmp_path, monkeypatch):
+    import sys
+    sys.path.insert(0, ".")
+    from src.common import lock as lk
+    monkeypatch.setattr(lk, "_DIR", tmp_path)
+    assert lk.minta("uji") is True
+    assert lk.minta("uji") is False   # proses sendiri masih hidup
+    lk.lepas()
+    assert lk.minta("uji") is True   # sesudah dilepas bisa lagi
+    lk.lepas()
+
+
+def test_lock_basi_diambil_alih(tmp_path, monkeypatch):
+    import subprocess
+    import sys
+    sys.path.insert(0, ".")
+    from src.common import lock as lk
+    monkeypatch.setattr(lk, "_DIR", tmp_path)
+    # PID yang sudah pasti mati (proses langsung keluar)
+    p = subprocess.Popen([sys.executable, "-c", "pass"])
+    p.wait()
+    (tmp_path / "uji2.lock").write_text(str(p.pid))
+    assert lk.minta("uji2") is True  # kunci basi -> ambil alih
+    lk.lepas()

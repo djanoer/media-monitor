@@ -17,6 +17,7 @@ ROOT = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
 from src.common.logging_setup import setup_logging  # noqa: E402
+from src.common import lock as lock_proses  # noqa: E402
 from src.scheduler.jobs import fetch_cycle, start_scheduler  # noqa: E402
 
 log = logging.getLogger("media_monitor")
@@ -31,6 +32,14 @@ def main() -> None:
     )
     args = parser.parse_args()
     setup_logging()
+
+    # Satu scheduler saja: cegah double-click ganda / dua terminal.
+    if not lock_proses.minta("scheduler"):
+        msg = ("Scheduler sudah berjalan di proses lain. "
+               "Tutup dulu window scheduler lama sebelum menjalankan lagi.")
+        log.warning(msg)
+        print(msg)
+        return
 
     if args.once:
         summary = fetch_cycle()

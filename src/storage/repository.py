@@ -126,7 +126,9 @@ def _utcnow() -> str:
 def _connect(db_path: str | pathlib.Path) -> sqlite3.Connection:
     db_path = pathlib.Path(db_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(db_path))
+    # timeout 30 dtk: penulis antre tertib saat scheduler + sync jalan
+    # bareng, bukan langsung "database is locked".
+    conn = sqlite3.connect(str(db_path), timeout=30.0)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -136,6 +138,8 @@ def init_db(db_path: str | pathlib.Path) -> None:
     with _connect(db_path) as conn:
         conn.executescript(SCHEMA)
         conn.executescript(_SCHEMA_FASE_D)
+        # WAL: pembaca tak blokir penulis (scheduler + sync + viewer bareng).
+        conn.execute("PRAGMA journal_mode=WAL")
 
 
 def insert_articles(db_path: str | pathlib.Path, articles: list[dict]) -> int:

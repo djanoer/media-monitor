@@ -27,6 +27,7 @@ from datetime import datetime, timedelta, timezone
 sys.path.insert(0, ".")
 
 from src.common.config import load_settings, load_topics
+from src.common import lock as lock_proses
 from src.processing import respon_publik, topik_hangat
 from src.storage import repository
 
@@ -154,6 +155,12 @@ def main() -> int:
 
     settings = load_settings()
     rp = settings.get("respon_publik", {})
+
+    # Satu sync saja: dua --auto bareng = dobel kuota YT + rawan 429 Trends.
+    if not lock_proses.minta("respon-publik"):
+        print("Sync respons publik sudah berjalan di proses lain. Batal.")
+        return 1
+
     db_path = settings["storage"]["db_path"]
     repository.init_db(db_path)
     api_key = os.environ.get(rp.get("youtube_api_key_env", "YOUTUBE_API_KEY"), "")
