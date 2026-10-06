@@ -91,7 +91,15 @@ div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] {
 div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"] {
   background:rgba(255,255,255,.03);
   border:1px solid rgba(255,255,255,.09); border-radius:10px;
-  padding:6px 12px; margin:0 0 10px;}
+  padding:8px 12px; margin:0 0 10px;}
+/* garis kiri kartu artikel ikut level risiko (penanda .mi-risk di dalam) */
+.mi-risk {display:none;}
+div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"]:has(.mi-risk[data-r="Tinggi"]) {
+  border-left:3px solid #fb7185;}
+div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"]:has(.mi-risk[data-r="Sedang"]) {
+  border-left:3px solid #fbbf24;}
+div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"]:has(.mi-risk[data-r="Rendah"]) {
+  border-left:3px solid #34d399;}
 /* header kartu minimalis: nama + pil count + 2 baris bar mini */
 .mi-hdr {margin-bottom:12px;}
 .mi-hdr-top {display:flex; align-items:center; gap:8px; padding:2px 2px 8px;}
@@ -489,8 +497,9 @@ for _r in range(0, len(names_grid), 4):
     for _col, _name in zip(_cols, names_grid[_r:_r + 4]):
         with _col:
             # Satu kartu: header minimalis + daftar scroll native.
-            # Tiap artikel = kartu sendiri berisi judul saja;
-            # klik judul -> dialog (modal) langsung di halaman sama.
+            # Tiap artikel = kartu sendiri (pills + judul, tanpa
+            # ringkasan); garis kiri ikut warna risiko.
+            # Klik judul -> dialog (modal) langsung di halaman sama.
             with st.container(border=True):
                 st.markdown(
                     kmp.header_kartu_minimalis(
@@ -500,6 +509,15 @@ for _r in range(0, len(names_grid), 4):
                 with st.container(height=430):
                     for a in grid[_name]:
                         with st.container(border=True):
+                            # Penanda level risiko (disembunyikan): dipakai
+                            # CSS :has() untuk garis kiri kartu ikut warna
+                            # risiko, seperti contoh.
+                            st.markdown(
+                                f'<div class="mi-risk" '
+                                f'data-r="{a.get("risiko", "")}"></div>',
+                                unsafe_allow_html=True)
+                            st.markdown(kmp.pills_artikel(a),
+                                        unsafe_allow_html=True)
                             _key = ("dlg-" + hashlib.md5(
                                 a["url"].encode()).hexdigest()[:16])
                             if st.button(a.get("title") or "(tanpa judul)",
