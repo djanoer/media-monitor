@@ -132,13 +132,13 @@ def _skala_risiko_html(lvl: str) -> str:
     """Baris skala risiko ala referensi Penjelasan Analisis."""
     rows = []
     for nama, rentang, ket in [
-            ("Rendah", "0–21",
+            ("Rendah", "0–34",
              "Minim potensi dampak buruk atau kerugian berarti; "
              "umumnya kabar biasa/harian."),
-            ("Sedang", "22–54",
+            ("Sedang", "35–64",
              "Berpotensi menimbulkan keresahan atau dampak sedang — "
              "perlu diwaspadai."),
-            ("Tinggi", "55–100",
+            ("Tinggi", "65–100",
              "Isu berbahaya/urgent: bencana, kecelakaan, krisis, "
              "konflik, korupsi besar.")]:
         w = WARNA_RISIKO.get(nama, "#9aa5c4")
@@ -157,13 +157,13 @@ def _skala_sentimen_html(sent: str) -> str:
     for nama, ket in [
             ("positif",
              "Nuansa baik lebih dominan (naik, untung, sukses, tumbuh, "
-             "menang, capai). Skor sentimen > +0.15."),
+             "menang, capai). Skor sentimen ≥ +2,0."),
             ("netral",
              "Isi berimbang/objektif; tidak condong ke positif maupun "
-             "negatif. Skor antara -0.15 sampai +0.15."),
+             "negatif. Skor antara -2,0 sampai +2,0."),
             ("negatif",
              "Nuansa buruk lebih dominan (krisis, korupsi, jatuh, tewas, "
-             "bencana, gagal). Skor sentimen < -0.15.")]:
+             "bencana, gagal). Skor sentimen ≤ -2,0.")]:
         w = WARNA_SENTIMEN.get(nama, "#9aa5c4")
         on = ' style="border-color:%s"' % w if nama == sent else ""
         rows.append(

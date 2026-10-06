@@ -256,7 +256,9 @@ button[data-testid="stExpandSidebarButton"]::after {content:"»";}
 
 [class*="st-key-mm-news-"]:hover {background:rgba(255,255,255,.06);}
 
-.mi-meta {display:flex;align-items:center;gap:5px;margin:0;}
+.mi-meta {display:flex;align-items:center;gap:8px;margin:0;}
+
+.mi-meta .mi-time {font-size:11px;color:#8ea0c9;white-space:nowrap;}
 
 .mi-meta>div {display:inline-flex;align-items:center;flex-wrap:wrap;gap:5px;}
 
@@ -962,19 +964,19 @@ def _skala_penjelasan(a: dict) -> None:
 
     for nama, rentang, ket in [
 
-        ("Rendah", "0–21",
+        ("Rendah", "0–34",
 
          "Minim potensi dampak buruk atau kerugian berarti; "
 
          "umumnya kabar biasa/harian."),
 
-        ("Sedang", "22–54",
+        ("Sedang", "35–64",
 
          "Berpotensi menimbulkan keresahan atau dampak sedang — "
 
          "perlu diwaspadai."),
 
-        ("Tinggi", "55–100",
+        ("Tinggi", "65–100",
 
          "Isu berbahaya/urgent: bencana, kecelakaan, krisis, "
 
@@ -1006,19 +1008,19 @@ def _skala_penjelasan(a: dict) -> None:
 
          "Nuansa baik lebih dominan (naik, untung, sukses, tumbuh, "
 
-         "menang, capai). Skor sentimen > +0.15."),
+         "menang, capai). Skor sentimen ≥ +2,0."),
 
         ("netral",
 
          "Isi berimbang/objektif; tidak condong ke positif maupun "
 
-         "negatif. Skor antara -0.15 sampai +0.15."),
+         "negatif. Skor antara -2,0 sampai +2,0."),
 
         ("negatif",
 
          "Nuansa buruk lebih dominan (krisis, korupsi, jatuh, tewas, "
 
-         "bencana, gagal). Skor sentimen < -0.15."),
+         "bencana, gagal). Skor sentimen ≤ -2,0."),
 
     ]:
 
@@ -1138,9 +1140,14 @@ for _r in range(0, len(names_grid), 4):
 
                             if _badges:
 
+                                _wkt = html_mod.escape(
+                                    fmt.format_wita(a.get("published_at")))
+
                                 st.markdown(
 
-                                    '<div class="mi-meta"><div>'
+                                    '<div class="mi-meta"><span class="mi-time">'
+
+                                    + _wkt + '</span><div>'
 
                                     + "".join(_badges) + '</div></div>',
 
