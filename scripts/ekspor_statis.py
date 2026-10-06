@@ -395,6 +395,7 @@ body{background:#0a0f1e;color:#e6ebf5;font-family:system-ui,-apple-system,'Segoe
 .mbar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:#232c4d}
 .mbar div{height:100%}
 .dist{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px}
+.dist>div{background:#101737;border:1px solid #1e2745;border-radius:12px;padding:16px}
 @media(max-width:800px){.dist{grid-template-columns:1fr}}
 .dhead{font-size:.72rem;color:#8ea0c9;letter-spacing:2px;margin-bottom:8px}
 .legend{display:flex;gap:16px;font-size:.82rem;color:#c6d2e8;margin-bottom:8px;flex-wrap:wrap}
@@ -489,19 +490,21 @@ def ekspor(db_path, out_path: Path, settings: dict,
     rel_sch = (f" · {_rel_id(m['umur_ms'])}" if m["umur_ms"] is not None
                else "")
 
+    emo_s = {"Positif": "😊", "Netral": "😐", "Negatif": "☹️"}.get(
+        m["kat_s"], "😐")
     kpi1 = (
-        f'<button class="kpi kpi-btn" id="kpi-total"><div class="v">{_ribu(m["total"])}</div>'
+        f'<button class="kpi kpi-btn" id="kpi-total"><div class="v">📰 {_ribu(m["total"])}</div>'
         f'<div class="l">TOTAL ARTIKEL</div>'
         f'<div class="s"><b>{m["ok"]}/{m["n_media"]}</b> media OK · '
         f'<b>{_ribu(m["d24"])}</b> dalam 24 jam</div></button>')
     kpi2 = (
-        f'<button class="kpi kpi-btn" id="kpi-sentimen"><div class="v">{_tanda_persen(m["avg_s"])}</div>'
+        f'<button class="kpi kpi-btn" id="kpi-sentimen"><div class="v">{emo_s} {_tanda_persen(m["avg_s"])}</div>'
         f'<div class="l">SENTIMEN RATA-RATA</div>'
         f'<div class="s">P {_ribu(m["ps"])} · N {_ribu(m["nt"])} · '
         f'Ng {_ribu(m["ng"])}</div>'
         f'{_bar([(m["ps"], WARNA_SENTIMEN["positif"]), (m["nt"], WARNA_SENTIMEN["netral"]), (m["ng"], WARNA_SENTIMEN["negatif"])])}</button>')
     kpi3 = (
-        f'<button class="kpi kpi-btn" id="kpi-risiko"><div class="v">{m["avg_r"]:g}<span class="per">/100</span></div>'
+        f'<button class="kpi kpi-btn" id="kpi-risiko"><div class="v">🛡 {m["avg_r"]:g}<span class="per">/100</span></div>'
         f'<div class="l">RISIKO RATA-RATA</div>'
         f'<div class="s">R {_ribu(m["rr"])} · S {_ribu(m["rs"])} · '
         f'T {_ribu(m["rt"])}</div>'
@@ -523,8 +526,6 @@ def ekspor(db_path, out_path: Path, settings: dict,
         f'<b>{_ribu(gagal_isi)}</b> ❌ gagal (mis. situs memblokir / '
         f'timeout) sehingga memakai <b>ringkasan/deskripsi dari RSS</b> '
         f'sebagai gantinya — berita tetap muncul di daftar.</div>')
-    emo_s = {"Positif": "😊", "Netral": "😐", "Negatif": "☹️"}.get(
-        m["kat_s"], "😐")
     ps_pct = round(m["ps"] / m["total"] * 100) if m["total"] else 0
     ng_pct = round(m["ng"] / m["total"] * 100) if m["total"] else 0
     stat_sentimen = (

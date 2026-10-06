@@ -91,6 +91,9 @@ def test_ekspor_html_memuat_semua_seksi(tmp_path):
     assert html.count("Kartu Statistik") >= 3
     assert "Apa maksudnya?" in html and "SKALA SENTIMEN" in html
     assert "SKALA RISIKO (0–100)" in html
+    # emoji KPI + kartu distribusi
+    assert "📰" in html and "😐" in html and "🛡" in html
+    assert ".dist>div{background" in html.replace(" ", "")
     import json as _json
     data = _json.loads(html.split('id="adata">')[1].split("</script>")[0]
                        .replace("<\\/", "</"))
