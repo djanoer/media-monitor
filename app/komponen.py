@@ -75,6 +75,26 @@ def bar_agregat(
     )
 
 
+def item_berita_grid(r: dict, max_judul: int = 120) -> str:
+    """Satu item berita untuk grid kolom media (ala referensi).
+
+    Border kiri berwarna sesuai level risiko; badge sentimen + risiko;
+    judul di bawahnya.
+    """
+    col = WARNA_RISIKO.get(r.get("risiko"), "#8ea0c9")
+    judul = html_mod.escape((r.get("title") or "(tanpa judul)")[:max_judul])
+    isi = (f'<div class="mi-item" style="border-left-color:{col}">'
+           f'<div>')
+    if r.get("risiko"):
+        isi += pill(r["risiko"], WARNA_RISIKO.get(r["risiko"], "#8ea0c9"))
+    if r.get("sentimen"):
+        isi += pill(r["sentimen"],
+                    WARNA_SENTIMEN.get(r["sentimen"], "#8ea0c9"))
+    isi += (f'</div><div class="mi-item-title">{judul}</div>'
+            f'</div>')
+    return isi
+
+
 def sorot(teks_escaped: str, keyword: str | None) -> str:
     """Bungkus kemunculan keyword dengan <mark>. Terima teks yang SUDAH di-escape."""
     if not keyword or not teks_escaped:

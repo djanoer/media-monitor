@@ -817,3 +817,57 @@ def distribusi_risiko(db_path: str | pathlib.Path) -> dict[str, int]:
                 " WHERE risiko IS NOT NULL GROUP BY risiko"
             )
         }
+
+
+def rata_risiko(db_path: str | pathlib.Path) -> float:
+    """Rata-rata skor risiko artikel (0-100) untuk KPI."""
+    with _connect(db_path) as conn:
+        r = conn.execute(
+            "SELECT AVG(risiko_skor) AS v FROM articles"
+            " WHERE risiko_skor IS NOT NULL"
+        ).fetchone()
+    return round(r["v"] or 0.0, 1)
+
+
+def distribusi_per_media(db_path: str | pathlib.Path) -> dict[str, dict]:
+    """Distribusi sentimen & risiko per media (untuk grid)."""
+    hasil: dict[str, dict] = {}
+    with _connect(db_path) as conn:
+        for r in conn.execute(
+            "SELECT media, sentimen, COUNT(*) AS n FROM articles"
+            " WHERE sentimen IS NOT NULL GROUP BY media, sentimen"
+        ):
+            m = hasil.setdefault(r["media"],
+                                 {"sentimen": {}, "risiko": {}})
+            m["sentimen"][r["sentimen"]] = r["n"]
+        for r in conn.execute(
+            "SELECT media, risiko, COUNT(*) AS n FROM articles"
+            " WHERE risiko IS NOT NULL GROUP BY media, risiko"
+        ):
+            m = hasil.setdefault(r["media"],
+                                 {"sentimen": {}, "risiko": {}})
+            m["risiko"][r["risiko"]] = r["n"]
+    return hasil
+
+
+def get_artikel_per_media(
+    db_path: str | pathlib.Path, limit_per_media: int = 8
+) -> dict[str, list[dict]]:
+    """Artikel terbaru per media (untuk grid kolom)."""
+    hasil: dict[str, list[dict]] = {}
+    with _connect(db_path) as conn:
+        medias = [
+            r["media"] for r in conn.execute(
+                "SELECT DISTINCT media FROM articles ORDER BY media")
+        ]
+        for m in medias:
+            hasil[m] = [
+                dict(r) for r in conn.execute(
+                    "SELECT url, media, title, summary, published_at,"
+                    " sentimen, sentimen_skor, risiko, risiko_skor"
+                    " FROM articles WHERE media = ?"
+                    " ORDER BY published_at DESC, id DESC LIMIT ?",
+                    (m, limit_per_media),
+                )
+            ]
+    return hasil

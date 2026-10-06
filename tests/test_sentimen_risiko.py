@@ -2,6 +2,7 @@
 
 from src.processing.risiko import skor_risiko
 from src.processing.sentimen import analisis, skor_teks
+from src.storage import repository
 
 CFG = {
     "risiko_base": 20, "risiko_negatif": 35, "risiko_netral": 10,
@@ -80,3 +81,55 @@ def test_risiko_clamp_dan_level():
 def test_risiko_sedang():
     level, skor = skor_risiko("negatif", False, [], CFG)
     assert (level, skor) == ("Sedang", 55.0)
+
+
+def _db_analisa(tmp_path):
+    import sqlite3
+    db = str(tmp_path / "g.db")
+    repository.init_db(db)
+    repository.migrate_analisa(db)
+    conn = sqlite3.connect(db)
+    rows = [
+        ("u1", "kompas", "T1", "baik bagus sukses", "positif", 4.0, "Rendah", 10.0),
+        ("u2", "kompas", "T2", "buruk gagal parah", "negatif", -5.0, "Tinggi", 80.0),
+        ("u3", "detik", "T3", "rapat digelar", "netral", 0.0, "Rendah", 20.0),
+    ]
+    for u, m, t, s, se, ss, r, rs in rows:
+        conn.execute(
+            "INSERT INTO articles (url, media, title, summary, fetched_at,"
+            " sentimen, sentimen_skor, risiko, risiko_skor)"
+            " VALUES (?,?,?,?,'x',?,?,?,?)",
+            (u, m, t, s, se, ss, r, rs))
+    conn.commit()
+    conn.close()
+    return db
+
+
+def test_rata_risiko(tmp_path):
+    db = _db_analisa(tmp_path)
+    assert repository.rata_risiko(db) == round((10 + 80 + 20) / 3, 1)
+
+
+def test_distribusi_per_media(tmp_path):
+    db = _db_analisa(tmp_path)
+    d = repository.distribusi_per_media(db)
+    assert d["kompas"]["sentimen"] == {"positif": 1, "negatif": 1}
+    assert d["kompas"]["risiko"] == {"Rendah": 1, "Tinggi": 1}
+    assert d["detik"]["sentimen"] == {"netral": 1}
+
+
+def test_get_artikel_per_media(tmp_path):
+    db = _db_analisa(tmp_path)
+    g = repository.get_artikel_per_media(db, limit_per_media=1)
+    assert set(g) == {"kompas", "detik"}
+    assert len(g["kompas"]) == 1
+    assert "risiko" in g["kompas"][0]
+
+
+def test_item_berita_grid():
+    from app import komponen as kmp
+    html = kmp.item_berita_grid({
+        "title": "Judul berita", "sentimen": "negatif", "risiko": "Tinggi"})
+    assert "Judul berita" in html
+    assert "#fb7185" in html  # border + badge Tinggi
+    assert "negatif" in html

@@ -71,11 +71,18 @@ baru_24 = repository.count_articles_since(db_path, fmt.iso_mundur(24))
 status_media = repository.get_media_last_status(db_path)
 ok = sum(1 for v in status_media.values() if v["status"] == "ok")
 
-k1, k2, k3, k4 = st.columns(4)
+k1, k2, k3, k4, k5, k6 = st.columns(6)
 k1.metric("Total artikel", f"{total:,}".replace(",", "."))
 k2.metric("24 jam terakhir", f"{baru_24:,}".replace(",", "."))
 k3.metric("Media OK", f"{ok}/{len(names)}")
 k4.metric("Fetch terakhir", fmt.waktu_relatif(acuan))
+dist_s = repository.distribusi_sentimen(db_path)
+tot_s = sum(dist_s.values())
+senti_pct = (round(100 * (dist_s.get("positif", 0) - dist_s.get("negatif", 0))
+                   / tot_s) if tot_s else 0)
+k5.metric("Sentimen rata-rata",
+          f"{senti_pct:+d}%".replace("-", "−"))
+k6.metric("Risiko rata-rata", f"{repository.rata_risiko(db_path):.0f}/100")
 
 # ---------- strip status per media ----------
 if status_media:
@@ -107,7 +114,6 @@ if counts:
     st.bar_chart({display.get(k, k): v for k, v in counts.items()})
 
 # ---------- agregat sentimen & risiko (ala referensi) ----------
-dist_s = repository.distribusi_sentimen(db_path)
 dist_r = repository.distribusi_risiko(db_path)
 if dist_s or dist_r:
     tot_s = sum(dist_s.values())
