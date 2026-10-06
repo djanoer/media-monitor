@@ -382,9 +382,10 @@ def _kartu_media(m: dict, items: list[tuple[int, dict]]) -> str:
         wr = WARNA_RISIKO.get(a.get("risiko"), "#2a3352") \
             if a.get("risiko_skor") is not None else "#2a3352"
         wkt = _waktu_artikel(a.get("published_at"))
-        wkt_html = f'<span class="wkt">{_esc(wkt)}</span>' if wkt else ""
+        wkt_html = f'<div class="wkt">{_esc(wkt)}</div>' if wkt else ""
         rows.append(
             f'<div class="item" style="border-left:3px solid {wr}">'
+            f'{wkt_html}'
             f'<button class="tlink" data-i="{idx}">'
             f'{_esc(a["title"])}</button>'
             f'<div class="sum">{_esc(_ringkas(a.get("summary")))}</div>'
@@ -514,7 +515,7 @@ h2.sec::before{content:"";width:4px;height:1.2em;background:linear-gradient(#4da
 .item .t:hover{color:#7dd3fc}
 .item .sum{color:#9ca3af;font-size:.8rem;margin:4px 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .bds{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center}
-.bds .wkt{font-size:.72rem;color:#8ea0c9;white-space:nowrap}
+.item .wkt{font-size:.72rem;color:#8ea0c9;margin-bottom:2px}
 .bd{font-size:.7rem;padding:2px 8px;border-radius:20px}
 .b-abu{background:#1f2937;color:#9ca3af;border:1px solid #374151}
 .muted{color:#6b7280;font-size:.8rem}
