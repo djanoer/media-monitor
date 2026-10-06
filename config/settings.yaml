@@ -31,6 +31,9 @@ verification:
   ambang_terkoroborasi: 80
   ambang_satu_sumber: 50
   # headline bombastis -> flag bila mengandung salah satu penanda ini
+  # Diperkaya 6 Okt 2026 dari riset clickbait Indonesia (CLICK-ID, Fakhruzzaman dkk.):
+  # kata pemicu curiosity-gap yg khas clickbait. Kata ultra-umum ("ini","itu","kamu")
+  # sengaja TIDAK dimasukkan agar tidak false-positive massal.
   penanda_bombastis:
     - darurat
     - gempar
@@ -40,6 +43,12 @@ verification:
     - skandal
     - terbongkar
     - ngeri
+    - bikin
+    - kepo
+    - ngamuk
+    - tiba-tiba
+    - ternyata
+    - gila
     - "!"
 
 # Respon publik (Fase D, pilot karhutla): YouTube Data API + Google Trends.

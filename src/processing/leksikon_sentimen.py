@@ -1,8 +1,12 @@
 """Leksikon sentimen Bahasa Indonesia (Fase F).
 
-Daftar kata starter untuk analisis sentimen berbasis leksikon.
-Bukan kamus lengkap — cukup untuk pilot; kata bisa ditambah seiring
-evaluasi terhadap artikel nyata. Semua lowercase.
+Daftar kata kurasi manual untuk analisis sentimen berbasis leksikon
+khusus domain BERITA (bukan media sosial).
+Catatan 6 Okt 2026: InSet (Koto & Rahmaningtyas, leksikon Twitter
+3.609+6.609 kata) diuji dan DITOLAK — kata netral berita seperti
+"hutan", "atas", "tradisional" punya skor liar dari slang Twitter.
+Kualitas > kuantitas untuk domain berita.
+Semua lowercase.
 """
 
 POSITIF = frozenset("""
@@ -17,6 +21,8 @@ adil jujur bijak cerdas pintar pandai tanggap sigap siap
 solid kompak bersatu rukun harmonis toleran inklusif ramah sopan
 terbaik unggul prima favorit populer
 melesat meroket melambung lampaui atasi redam padam
+resmikan diresmikan raih meraih terobosan stabil surplus ekspor
+diakui pengakuan investasi apresiasi ulang tahun
 """.split())
 
 NEGATIF = frozenset("""
@@ -30,6 +36,9 @@ polusi asap kabut kekeringan kelaparan haus kekurangan langka mahal
 bengkak jebol bocor tumpah ledak terbakar hangus gosong abu debu
 lumpuh buntu tutup bangkrut pailit sengsara menderita tersiksa terancam
 terdampak karhutla hotspot ispa sesak batuk
+ditangkap penangkapan mengungsi pengungsi meluas longsor gempa tsunami
+tenggelam tabrakan kecelakaan meledak ledakan rob abrasi kabut
+hilang puting beliung endemi klaster terbongkar
 """.split())
 
 # Kata negasi: membalik polaritas kata sentimen dalam 2 token sesudahnya.
