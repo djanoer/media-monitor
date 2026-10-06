@@ -75,6 +75,7 @@ analisa:
 
 storage:
   db_path: "data/media_monitor.db"
+  retensi_hari: 30   # artikel lebih tua dari ini dihapus otomatis tiap ekspor
 
 # Ringkasan AI via Groq (gratis). Dijalankan saat ekspor_statis: artikel
 # terbaru yg belum punya ringkasan_ai diproses bertahap + cache di DB.

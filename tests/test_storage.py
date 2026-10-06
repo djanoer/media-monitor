@@ -226,3 +226,23 @@ def test_ringkasan_ai_cache(tmp_path):
     # get_artikel_per_media ikut memuat ringkasan_ai
     per = repository.get_artikel_per_media(db, limit_per_media=8)
     assert per["tempo"][0]["ringkasan_ai"] in ("Ringkasan AI satu.", None)
+
+
+def test_hapus_artikel_lama(tmp_path):
+    import datetime
+    db = tmp_path / "test.db"
+    repository.init_db(db)
+    now = datetime.datetime.now(datetime.timezone.utc)
+    lama = (now - datetime.timedelta(days=31)).isoformat()
+    baru = (now - datetime.timedelta(days=5)).isoformat()
+    arts = []
+    for i, tgl in enumerate([lama, baru]):
+        arts.append({"url": f"u{i}", "media": "tempo", "title": f"T{i}",
+                     "summary": "s", "link": f"u{i}", "published_at": tgl})
+    # tanpa published_at -> pakai fetched_at (baru saja) -> tidak dihapus
+    arts.append({"url": "u9", "media": "tempo", "title": "T9",
+                 "summary": "s", "link": "u9", "published_at": ""})
+    repository.insert_articles(db, arts)
+    assert repository.hapus_artikel_lama(db, hari=30) == 1
+    sisa = repository.count_articles(db)
+    assert sisa == 2

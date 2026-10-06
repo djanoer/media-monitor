@@ -955,6 +955,24 @@ def migrate_isi_lengkap(db_path: str | pathlib.Path) -> bool:
         return True
 
 
+def hapus_artikel_lama(db_path: str | pathlib.Path, hari: int = 30) -> int:
+    """Hapus artikel lebih tua dari `hari` (retensi rolling, best-effort).
+
+    Patokan: published_at (fallback fetched_at bila kosong). published_at
+    selalu ISO (dinormalisasi fetcher) sehingga perbandingan string valid.
+    Kembalikan jumlah artikel yang dihapus.
+    """
+    batas = (datetime.datetime.now(datetime.timezone.utc)
+             - datetime.timedelta(days=hari)).isoformat()
+    with _connect(db_path) as conn:
+        cur = conn.execute(
+            "DELETE FROM articles "
+            "WHERE COALESCE(NULLIF(published_at, ''), fetched_at) < ?",
+            (batas,),
+        )
+        return cur.rowcount
+
+
 def migrate_ringkasan_ai(db_path: str | pathlib.Path) -> bool:
     """Tambah kolom ringkasan_ai ke articles bila belum ada (idempoten).
 

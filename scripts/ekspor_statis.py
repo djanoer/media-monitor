@@ -185,6 +185,7 @@ def _isi_ringkasan_ai(db_path, settings: dict) -> int:
         return 0
     api_key = os.environ.get("GROQ_API_KEY", "").strip()
     if not api_key:
+        print("Ringkasan AI dilewati (GROQ_API_KEY tidak ada)", flush=True)
         return 0
     repository.migrate_ringkasan_ai(db_path)
     antre = repository.artikel_tanpa_ringkasan_ai(
@@ -194,15 +195,21 @@ def _isi_ringkasan_ai(db_path, settings: dict) -> int:
     jeda = float(cfg.get("jeda_detik", 3))
     model = cfg.get("model", "qwen/qwen3.8-27b")
     max_tokens = int(cfg.get("max_tokens", 300))
+    total = len(antre)
+    print(f"Mengisi ringkasan AI ({total} artikel)...", flush=True)
     n = 0
     for a in antre:
         teks = ringkas_artikel(a.get("title") or "",
                                a.get("isi_lengkap") or "",
                                api_key, model=model, max_tokens=max_tokens)
         if not teks:
+            print(f"  berhenti di {n}/{total} (gagal/kuota habis)",
+                  flush=True)
             break  # gagal/kuota -> berhenti, coba lagi ekspor berikutnya
         repository.simpan_ringkasan_ai(db_path, a["url"], teks)
         n += 1
+        if n % 5 == 0 or n == total:
+            print(f"  ringkasan AI: {n}/{total}", flush=True)
         time.sleep(jeda)
     return n
 
@@ -524,6 +531,10 @@ def _tanda_persen(v: int) -> str:
 def ekspor(db_path, out_path: Path, settings: dict,
            media_list: list[dict]) -> dict:
     """Render docs/index.html dari DB. Kembalikan statistik."""
+    n_hapus = repository.hapus_artikel_lama(
+        db_path, hari=int(settings.get("storage", {}).get("retensi_hari", 30)))
+    if n_hapus:
+        print(f"Retensi: {n_hapus} artikel >30 hari dihapus", flush=True)
     m = _metrik(db_path, media_list)
     n_ai = _isi_ringkasan_ai(db_path, settings)
     per_media = repository.get_artikel_per_media(db_path, limit_per_media=8)
