@@ -3,13 +3,14 @@
 from src.common.config import load_media, load_settings
 
 
-def test_load_media_sepuluh_media_aktif():
+def test_load_media_lima_belas_media_aktif():
     media = load_media()
-    assert len(media) == 10
+    assert len(media) == 15
     names = {m["name"] for m in media}
     assert names == {
         "tempo", "cnn_indonesia", "antara", "republika", "bisnis_indonesia",
         "kompas", "detik", "liputan6", "jawa_pos", "kumparan",
+        "tribunnews", "okezone", "sindonews", "viva", "merdeka",
     }
 
 
