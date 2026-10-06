@@ -128,31 +128,48 @@ def cuplikan(r: dict, max_len: int = 140) -> str:
     return html_mod.escape(teks_ringkasan_mentah(r, max_len))
 
 
-def kepala_kartu_media(
+def kartu_media_grid(
     name: str, display_name: str, color: str,
-    dist: dict, n_arts: int,
+    dist: dict, arts: list[dict],
 ) -> str:
-    """Header kartu kolom media: dot + nama + count + mini-bar.
+    """Satu kartu kolom media utuh (satu blok HTML).
 
-    Satu blok HTML seimbang (tanpa div tak tertutup). Daftar artikel
-    di-render pemanggil sebagai st.button native per judul di dalam
-    st.container(height=..., border=True) agar klik langsung membuka
-    dialog tanpa navigasi ?art=.
+    Header (dot + nama + count) dan mini-bar sentimen/risiko tetap di
+    atas; daftar artikel scroll mandiri (.mi-card-items). Judul berupa
+    hyperlink real (?art=<url>) yang membuka dialog detail.
     """
+    from urllib.parse import quote_plus
+
     ds = (dist or {}).get("sentimen", {})
     dr = (dist or {}).get("risiko", {})
     tot_s, tot_r = sum(ds.values()), sum(dr.values())
     nama = html_mod.escape(display_name)
+    items = []
+    for a in arts:
+        col = WARNA_RISIKO.get(a.get("risiko"), "#8ea0c9")
+        judul = html_mod.escape(a.get("title") or "(tanpa judul)")
+        href = f"?art={quote_plus(a['url'])}#card-{name}"
+        cuplik = cuplikan(a)
+        sum_html = (f'<div class="mi-item-sum">{cuplik}</div>'
+                    if cuplik else "")
+        items.append(
+            f'<div class="mi-item" style="border-left-color:{col}">'
+            f'{pills_artikel(a)}'
+            f'<a class="mi-judul" href="{href}">{judul}</a>'
+            f'{sum_html}</div>')
     return (
+        f'<div class="mi-card" id="card-{name}">'
         f'<div class="mi-gridhead">'
         f'<span style="width:9px;height:9px;border-radius:50%;'
         f'display:inline-block;background:{color};'
         f'box-shadow:0 0 8px {color}"></span>'
         f'<span class="mi-gridname">{nama}</span>'
         f'<span class="mi-gridcount" style="background:{color}">'
-        f'{n_arts}</span></div>'
+        f'{len(arts)}</span></div>'
         f'{bar_agregat("Sentimen", tot_s, [("positif", ds.get("positif", 0), "#34d399"), ("netral", ds.get("netral", 0), "#b6c6f0"), ("negatif", ds.get("negatif", 0), "#fb7185")])}'
         f'{bar_agregat("Risiko", tot_r, [("Rendah", dr.get("Rendah", 0), "#34d399"), ("Sedang", dr.get("Sedang", 0), "#fbbf24"), ("Tinggi", dr.get("Tinggi", 0), "#fb7185")])}'
+        f'<div class="mi-card-items">{"".join(items)}</div>'
+        f'</div>'
     )
 
 
