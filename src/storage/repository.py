@@ -272,6 +272,24 @@ def count_articles(db_path: str | pathlib.Path) -> int:
         return row["n"]
 
 
+def count_media_terisi(db_path: str | pathlib.Path) -> int:
+    """Jumlah media berbeda yang punya artikel."""
+    with _connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT COUNT(DISTINCT media) AS n FROM articles").fetchone()
+        return row["n"]
+
+
+def count_isi_lengkap(db_path: str | pathlib.Path) -> int:
+    """Jumlah artikel yang isi lengkapnya berhasil diunduh."""
+    with _connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS n FROM articles "
+            "WHERE isi_lengkap IS NOT NULL AND TRIM(isi_lengkap) != ''"
+        ).fetchone()
+        return row["n"]
+
+
 def count_by_media(db_path: str | pathlib.Path) -> dict[str, int]:
     """Jumlah artikel per media (read-only, untuk viewer/dashboard)."""
     with _connect(db_path) as conn:

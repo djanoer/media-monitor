@@ -84,6 +84,13 @@ def test_ekspor_html_memuat_semua_seksi(tmp_path):
     assert 'class="tlink" data-i="0"' in html
     assert 'id="adata"' in html and 'id="mback"' in html
     assert "kenapa label ini?" in html and "Buka sumber" in html
+    # tiga kartu KPI bisa diklik -> modal Kartu Statistik
+    for mid in ["kpi-total", "kpi-sentimen", "kpi-risiko",
+                "mstat-t", "mstat-s", "mstat-r"]:
+        assert f'id="{mid}"' in html, mid
+    assert html.count("Kartu Statistik") >= 3
+    assert "Apa maksudnya?" in html and "SKALA SENTIMEN" in html
+    assert "SKALA RISIKO (0–100)" in html
     import json as _json
     data = _json.loads(html.split('id="adata">')[1].split("</script>")[0]
                        .replace("<\\/", "</"))
@@ -108,16 +115,15 @@ def test_detail_artikel_tanpa_analisa(tmp_path):
     assert d["isi"] == [] and d["title"] == "Judul"
 
 
-def test_detail_isi_hanya_kutipan_yang_dianalisa():
-    isi = ("Kalimat pertama tentang banjir bandang. "
-           "Kalimat kedua soal evakuasi warga. "
-           "Kalimat ketiga yang tidak ikut dianalisa. " * 10)
-    a = {"url": "u", "media": "tempo", "title": "Banjir",
-         "summary": "", "isi_lengkap": isi,
-         "published_at": "", "sentimen": "negatif",
-         "sentimen_skor": -3.0, "risiko": "Tinggi", "risiko_skor": 80.0}
-    d = eks._detail_artikel(a, {"analisa": {}, "verification": {}}, {}, "Tempo")
-    assert len(d["isi"]) == 1  # satu kutipan, bukan full isi
-    assert "Kalimat pertama" in d["isi"][0]
-    assert "tidak ikut dianalisa" not in d["isi"][0]
-    assert len(d["isi"][0]) <= 2001
+def test_kutipan_dua_tiga_kalimat():
+    isi = ("Kalimat satu soal banjir. Kalimat dua soal evakuasi! "
+           "Kalimat tiga soal bantuan? Kalimat empat tidak ikut.")
+    a = {"title": "Banjir", "summary": "", "isi_lengkap": isi}
+    k = eks._kutipan(a)
+    assert "Kalimat satu" in k and "Kalimat tiga" in k
+    assert "Kalimat empat" not in k
+    assert len(k) <= 601
+    # tanpa isi: pakai summary; summary duplikat judul -> kosong
+    assert eks._kutipan({"title": "T", "summary": "", "isi_lengkap": ""}) == ""
+    assert eks._kutipan({"title": "Sama", "summary": "Sama",
+                         "isi_lengkap": ""}) == ""

@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import html as html_mod
 import json
+import re
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -28,7 +29,7 @@ from src.processing.risiko import komponen_risiko
 from src.processing.sentimen import kata_berpengaruh
 from src.processing.verification import cek_headline
 from src.storage import repository
-from app.komponen import teks_ringkasan_mentah
+from app.komponen import mirip_judul, teks_ringkasan_mentah
 
 WITA = timezone(timedelta(hours=8))
 UTC = timezone.utc
@@ -103,6 +104,68 @@ def _fmt_skor(v) -> str:
     return f"{v:g}" if isinstance(v, (int, float)) else "-"
 
 
+def _kutipan(a: dict, max_kalimat: int = 3, max_len: int = 600) -> str:
+    """Kutipan 2-3 kalimat untuk modal detail (bukan full isi)."""
+    isi = (a.get("isi_lengkap") or "").strip()
+    if isi:
+        kal = [k.strip() for k in re.split(r"(?<=[.!?])\s+", isi)
+               if k.strip()]
+        teks = " ".join(kal[:max_kalimat]).strip()
+    else:
+        teks = bersihkan_html(a.get("summary") or "").strip()
+        if mirip_judul(teks, a.get("title")):
+            teks = ""
+    if len(teks) > max_len:
+        teks = teks[:max_len].rsplit(" ", 1)[0] + "…"
+    return teks
+
+
+def _skala_risiko_html(lvl: str) -> str:
+    """Baris skala risiko ala referensi Penjelasan Analisis."""
+    rows = []
+    for nama, rentang, ket in [
+            ("Rendah", "0–21",
+             "Minim potensi dampak buruk atau kerugian berarti; "
+             "umumnya kabar biasa/harian."),
+            ("Sedang", "22–54",
+             "Berpotensi menimbulkan keresahan atau dampak sedang — "
+             "perlu diwaspadai."),
+            ("Tinggi", "55–100",
+             "Isu berbahaya/urgent: bencana, kecelakaan, krisis, "
+             "konflik, korupsi besar.")]:
+        w = WARNA_RISIKO.get(nama, "#9aa5c4")
+        on = ' style="border-color:%s"' % w if nama == lvl else ""
+        rows.append(
+            f'<div class="skala{" on" if nama == lvl else ""}"{on}>'
+            f'<span class="bd" style="background:{w}22;color:{w};'
+            f'border:1px solid {w}55">{nama}</span> '
+            f'Skor risiko {rentang}. {_esc(ket)}</div>')
+    return "".join(rows)
+
+
+def _skala_sentimen_html(sent: str) -> str:
+    """Baris skala sentimen ala referensi Penjelasan Analisis."""
+    rows = []
+    for nama, ket in [
+            ("positif",
+             "Nuansa baik lebih dominan (naik, untung, sukses, tumbuh, "
+             "menang, capai). Skor sentimen > +0.15."),
+            ("netral",
+             "Isi berimbang/objektif; tidak condong ke positif maupun "
+             "negatif. Skor antara -0.15 sampai +0.15."),
+            ("negatif",
+             "Nuansa buruk lebih dominan (krisis, korupsi, jatuh, tewas, "
+             "bencana, gagal). Skor sentimen < -0.15.")]:
+        w = WARNA_SENTIMEN.get(nama, "#9aa5c4")
+        on = ' style="border-color:%s"' % w if nama == sent else ""
+        rows.append(
+            f'<div class="skala{" on" if nama == sent else ""}"{on}>'
+            f'<span class="bd" style="background:{w}22;color:{w};'
+            f'border:1px solid {w}55">{nama.capitalize()}</span> '
+            f'{_esc(ket)}</div>')
+    return "".join(rows)
+
+
 def _detail_artikel(a: dict, settings: dict, verdicts: dict,
                     display: str) -> dict:
     """Bahan modal detail artikel (precompute, ala dialog lokal)."""
@@ -132,58 +195,18 @@ def _detail_artikel(a: dict, settings: dict, verdicts: dict,
           f"{alasan}. Risiko {a.get('risiko') or '-'} "
           f"(skor {_fmt_skor(a.get('risiko_skor'))}/100): {rincian}.")
 
-    t_tinggi = float(analisa_cfg.get("ambang_risiko_tinggi", 65))
-    t_sedang = float(analisa_cfg.get("ambang_risiko_sedang", 35))
     lvl = a.get("risiko") or "Rendah"
-    # Skala ala referensi "Penjelasan Analisis" (Bor): threshold + deskripsi
-    # persis seperti mockup, bukan dari config.
+    # Skala ala referensi "Penjelasan Analisis" (Bor).
     tanya = (f"Kenapa berita ini {sent} dengan risiko "
              f"{(a.get('risiko') or 'rendah').lower()}?")
-    skala_r = []
-    for nama, rentang, ket in [
-            ("Rendah", "0–21",
-             "Minim potensi dampak buruk atau kerugian berarti; "
-             "umumnya kabar biasa/harian."),
-            ("Sedang", "22–54",
-             "Berpotensi menimbulkan keresahan atau dampak sedang — "
-             "perlu diwaspadai."),
-            ("Tinggi", "55–100",
-             "Isu berbahaya/urgent: bencana, kecelakaan, krisis, "
-             "konflik, korupsi besar.")]:
-        w = WARNA_RISIKO.get(nama, "#9aa5c4")
-        on = ' style="border-color:%s"' % w if nama == lvl else ""
-        skala_r.append(
-            f'<div class="skala{" on" if nama == lvl else ""}"{on}>'
-            f'<span class="bd" style="background:{w}22;color:{w};'
-            f'border:1px solid {w}55">{nama}</span> '
-            f'Skor risiko {rentang}. {_esc(ket)}</div>')
-    skala_s = []
-    for nama, ket in [
-            ("positif",
-             "Nuansa baik lebih dominan (naik, untung, sukses, tumbuh, "
-             "menang, capai). Skor sentimen > +0.15."),
-            ("netral",
-             "Isi berimbang/objektif; tidak condong ke positif maupun "
-             "negatif. Skor antara -0.15 sampai +0.15."),
-            ("negatif",
-             "Nuansa buruk lebih dominan (krisis, korupsi, jatuh, tewas, "
-             "bencana, gagal). Skor sentimen < -0.15.")]:
-        w = WARNA_SENTIMEN.get(nama, "#9aa5c4")
-        on = ' style="border-color:%s"' % w if nama == sent else ""
-        skala_s.append(
-            f'<div class="skala{" on" if nama == sent else ""}"{on}>'
-            f'<span class="bd" style="background:{w}22;color:{w};'
-            f'border:1px solid {w}55">{nama.capitalize()}</span> '
-            f'{_esc(ket)}</div>')
     why = (f'<div class="mai"><b>🤖 {_esc(tanya)}</b><br>AI: {_esc(ai)}</div>'
            f'<div class="skhead">🛡 SKALA RISIKO (0–100)</div>'
-           + "".join(skala_r) +
-           f'<div class="skhead">💬 SKALA SENTIMEN</div>' + "".join(skala_s))
+           + _skala_risiko_html(lvl) +
+           f'<div class="skhead">💬 SKALA SENTIMEN</div>'
+           + _skala_sentimen_html(sent))
 
-    # Teks yang ditampilkan di modal: BUKAN full isi, melainkan persis
-    # potongan teks yang dipakai menentukan sentimen & risiko
-    # (teks_ringkasan_mentah, maks 2000 char).
-    kutipan = teks_ringkasan_mentah(a, max_len=2000)
+    # Teks yang ditampilkan di modal: kutipan 2-3 kalimat (bukan full isi).
+    kutipan = _kutipan(a)
     return {
         "media": display,
         "url": a.get("url") or "",
@@ -234,10 +257,17 @@ def _metrik(db_path, media_list: list[dict]) -> dict:
     ps, nt, ng = (dist_s.get("positif", 0), dist_s.get("netral", 0),
                   dist_s.get("negatif", 0))
     avg_s = round((ps - ng) / total * 100) if total else 0
+    kat_s = ("Positif" if avg_s >= 15 else
+             "Negatif" if avg_s <= -15 else "Netral")
     dist_r = repository.distribusi_risiko(db_path)
     rr, rs, rt = (dist_r.get("Rendah", 0), dist_r.get("Sedang", 0),
                   dist_r.get("Tinggi", 0))
     avg_r = repository.rata_risiko(db_path)
+    kat_r = ("Tinggi" if avg_r >= 55 else
+             "Sedang" if avg_r >= 22 else "Rendah")
+    repository.migrate_isi_lengkap(db_path)
+    nm = repository.count_media_terisi(db_path)
+    ok_isi = repository.count_isi_lengkap(db_path)
     last = repository.get_last_run(db_path)
     umur_ms, sehat = None, "unknown"
     if last and last.get("finished_at"):
@@ -250,8 +280,9 @@ def _metrik(db_path, media_list: list[dict]) -> dict:
                  else "mati")
     return {
         "total": total, "ok": ok, "n_media": len(media_list), "d24": d24,
-        "ps": ps, "nt": nt, "ng": ng, "avg_s": avg_s,
-        "rr": rr, "rs": rs, "rt": rt, "avg_r": avg_r,
+        "ps": ps, "nt": nt, "ng": ng, "avg_s": avg_s, "kat_s": kat_s,
+        "rr": rr, "rs": rs, "rt": rt, "avg_r": avg_r, "kat_r": kat_r,
+        "nm": nm, "ok_isi": ok_isi,
         "umur_ms": umur_ms, "sehat": sehat,
         "status": status,
     }
@@ -359,6 +390,8 @@ body{background:#0a0f1e;color:#e6ebf5;font-family:system-ui,-apple-system,'Segoe
 .kpi .l{font-size:.72rem;color:#8ea0c9;letter-spacing:2px;margin:2px 0 8px}
 .kpi .s{font-size:.85rem;color:#c6d2e8;margin-bottom:10px}
 .kpi .s b{color:#e6ebf5}
+.kpi-btn{font:inherit;color:inherit;text-align:left;cursor:pointer}
+.kpi-btn:hover{border-color:#33406b;transform:translateY(-2px)}
 .mbar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:#232c4d}
 .mbar div{height:100%}
 .dist{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px}
@@ -457,22 +490,103 @@ def ekspor(db_path, out_path: Path, settings: dict,
                else "")
 
     kpi1 = (
-        f'<div class="kpi"><div class="v">{_ribu(m["total"])}</div>'
+        f'<button class="kpi kpi-btn" id="kpi-total"><div class="v">{_ribu(m["total"])}</div>'
         f'<div class="l">TOTAL ARTIKEL</div>'
         f'<div class="s"><b>{m["ok"]}/{m["n_media"]}</b> media OK · '
-        f'<b>{_ribu(m["d24"])}</b> dalam 24 jam</div></div>')
+        f'<b>{_ribu(m["d24"])}</b> dalam 24 jam</div></button>')
     kpi2 = (
-        f'<div class="kpi"><div class="v">{_tanda_persen(m["avg_s"])}</div>'
+        f'<button class="kpi kpi-btn" id="kpi-sentimen"><div class="v">{_tanda_persen(m["avg_s"])}</div>'
         f'<div class="l">SENTIMEN RATA-RATA</div>'
         f'<div class="s">P {_ribu(m["ps"])} · N {_ribu(m["nt"])} · '
         f'Ng {_ribu(m["ng"])}</div>'
-        f'{_bar([(m["ps"], WARNA_SENTIMEN["positif"]), (m["nt"], WARNA_SENTIMEN["netral"]), (m["ng"], WARNA_SENTIMEN["negatif"])])}</div>')
+        f'{_bar([(m["ps"], WARNA_SENTIMEN["positif"]), (m["nt"], WARNA_SENTIMEN["netral"]), (m["ng"], WARNA_SENTIMEN["negatif"])])}</button>')
     kpi3 = (
-        f'<div class="kpi"><div class="v">{m["avg_r"]:g}<span class="per">/100</span></div>'
+        f'<button class="kpi kpi-btn" id="kpi-risiko"><div class="v">{m["avg_r"]:g}<span class="per">/100</span></div>'
         f'<div class="l">RISIKO RATA-RATA</div>'
         f'<div class="s">R {_ribu(m["rr"])} · S {_ribu(m["rs"])} · '
         f'T {_ribu(m["rt"])}</div>'
-        f'{_bar([(m["rr"], WARNA_RISIKO["Rendah"]), (m["rs"], WARNA_RISIKO["Sedang"]), (m["rt"], WARNA_RISIKO["Tinggi"])])}</div>')
+        f'{_bar([(m["rr"], WARNA_RISIKO["Rendah"]), (m["rs"], WARNA_RISIKO["Sedang"]), (m["rt"], WARNA_RISIKO["Tinggi"])])}</button>')
+
+    # ---- modal "Kartu Statistik · Penjelasan" untuk tiap KPI ----
+    gagal_isi = m["total"] - m["ok_isi"]
+    pct_isi = round(m["ok_isi"] / m["total"] * 100) if m["total"] else 0
+    stat_total = (
+        f'<div class="mtitle">📰 Total Berita: {_ribu(m["total"])} · '
+        f'{_ribu(m["nm"])} media</div>'
+        f'<div class="mai"><b>📌 Apa maksudnya?</b><br>'
+        f'Jumlah seluruh item berita yang berhasil dikumpulkan dari '
+        f'<b>{_ribu(m["nm"])} sumber RSS</b> pada pemantauan ini '
+        f'(berita terbaru dari tiap sumber).</div>'
+        f'<div class="mai"><b>🤖 Soal sukses/gagal unduh isi</b><br>'
+        f'Dari {_ribu(m["total"])} berita: <b>{_ribu(m["ok_isi"])}</b> ✅ '
+        f'berhasil diunduh isi lengkapnya ({pct_isi}%); '
+        f'<b>{_ribu(gagal_isi)}</b> ❌ gagal (mis. situs memblokir / '
+        f'timeout) sehingga memakai <b>ringkasan/deskripsi dari RSS</b> '
+        f'sebagai gantinya — berita tetap muncul di daftar.</div>')
+    emo_s = {"Positif": "😊", "Netral": "😐", "Negatif": "☹️"}.get(
+        m["kat_s"], "😐")
+    ps_pct = round(m["ps"] / m["total"] * 100) if m["total"] else 0
+    ng_pct = round(m["ng"] / m["total"] * 100) if m["total"] else 0
+    stat_sentimen = (
+        f'<div class="mtitle">{emo_s} Sentimen Rata-rata: '
+        f'{_tanda_persen(m["avg_s"])} · {m["kat_s"]}</div>'
+        f'<div class="mai"><b>📌 Apa maksudnya?</b><br>'
+        f'Selisih persentase berita positif dikurangi negatif dari '
+        f'<b>{_ribu(m["total"])} berita</b>. '
+        f'{_tanda_persen(m["avg_s"])} berarti kecenderungan seluruh '
+        f'berita saat ini {m["kat_s"].lower()}.</div>'
+        f'<div class="mai"><b>🤖 Kenapa nilainya '
+        f'{_tanda_persen(m["avg_s"])}?</b><br>'
+        f'Tiap berita dilabeli positif/netral/negatif dari perbandingan '
+        f'kata positif vs negatif pada judul/isi (<b>leksikon</b>). '
+        f'Nilai kartu ini = % positif − % negatif '
+        f'({ps_pct}% − {ng_pct}%).<br>'
+        f'Rincian semua berita:<br>'
+        f'<span class="legend">'
+        f'<span><i style="background:{WARNA_SENTIMEN["positif"]}"></i>'
+        f'P {_ribu(m["ps"])}</span>'
+        f'<span><i style="background:{WARNA_SENTIMEN["netral"]}"></i>'
+        f'N {_ribu(m["nt"])}</span>'
+        f'<span><i style="background:{WARNA_SENTIMEN["negatif"]}"></i>'
+        f'Ng {_ribu(m["ng"])}</span></span></div>'
+        f'<div class="skhead">💬 SKALA SENTIMEN</div>'
+        f'{_skala_sentimen_html(m["kat_s"].lower())}'
+        f'<div class="mai">💡 Baris yang disorot = kategori rata-rata '
+        f'saat ini. Ini estimasi otomatis & <b>belum tentu 100% '
+        f'valid</b>.</div>')
+    stat_risiko = (
+        f'<div class="mtitle">🛡 Risiko Rata-rata: {m["avg_r"]:g}/100 · '
+        f'{m["kat_r"]}</div>'
+        f'<div class="mai"><b>📌 Apa maksudnya?</b><br>'
+        f'Rata-rata skor risiko dari <b>{_ribu(m["total"])} berita</b> '
+        f'yang dipantau, dalam skala <b>0–100</b>. Makin tinggi angkanya, '
+        f'makin banyak berita yang mengandung isu berisiko (bencana, '
+        f'krisis, korupsi, kecelakaan, konflik, dsb).</div>'
+        f'<div class="mai"><b>🤖 Kenapa nilainya {m["avg_r"]:g}/100?</b><br>'
+        f'Tiap berita diberi <b>risk_score</b>: dihitung dari kata '
+        f'negatif & kata berisiko pada judul/isi lewat <b>leksikon</b>. '
+        f'Nilai di kartu ini = rata-rata dari {_ribu(m["total"])} skor '
+        f'tsb.<br>Rincian semua berita:<br>'
+        f'<span class="legend">'
+        f'<span><i style="background:{WARNA_RISIKO["Rendah"]}"></i>'
+        f'Rendah {_ribu(m["rr"])}</span>'
+        f'<span><i style="background:{WARNA_RISIKO["Sedang"]}"></i>'
+        f'Sedang {_ribu(m["rs"])}</span>'
+        f'<span><i style="background:{WARNA_RISIKO["Tinggi"]}"></i>'
+        f'Tinggi {_ribu(m["rt"])}</span></span></div>'
+        f'<div class="skhead">🛡 SKALA RISIKO (0–100)</div>'
+        f'{_skala_risiko_html(m["kat_r"])}'
+        f'<div class="mai">💡 Baris yang disorot = kategori rata-rata '
+        f'saat ini. Ini estimasi otomatis dan <b>belum tentu 100% valid'
+        f'</b> — dipakai untuk memantau kecenderungan berita.</div>')
+    stat_modals = "".join(
+        f'<div class="mback" id="{mid}"><div class="modal" role="dialog" '
+        f'aria-modal="true"><button class="mx" aria-label="Tutup">✕</button>'
+        f'<div class="mhead"><b>Kartu Statistik</b><span> · Penjelasan</span>'
+        f'</div>{body}</div></div>'
+        for mid, body in [("mstat-t", stat_total),
+                          ("mstat-s", stat_sentimen),
+                          ("mstat-r", stat_risiko)])
 
     dist = (
         f'<div class="dist"><div>'
@@ -545,6 +659,7 @@ def ekspor(db_path, out_path: Path, settings: dict,
 <div class="mpub" id="m-pub"></div>
 <div class="misi" id="m-isi"></div>
 </div></div>
+{stat_modals}
 <script type="application/json" id="adata">{adata}</script>
 <script>
 (function(){{
@@ -575,14 +690,18 @@ document.getElementById('mwhybody').hidden=true;
 document.getElementById('m-pub').textContent=d.pub?('Dipublikasikan: '+d.pub):'';
 document.getElementById('m-isi').innerHTML=d.isi.map(function(p){{return '<p>'+esc(p)+'</p>';}}).join('');
 back.classList.add('open');document.body.style.overflow='hidden';}}
-function closeM(){{back.classList.remove('open');document.body.style.overflow='';}}
 document.querySelectorAll('.tlink').forEach(function(b){{
 b.addEventListener('click',function(){{openM(+b.dataset.i);}});}});
-document.getElementById('mx').addEventListener('click',closeM);
 document.getElementById('mwhy').addEventListener('click',function(){{
-var b=document.getElementById('mwhybody');b.hidden=!b.hidden;}});
-back.addEventListener('click',function(e){{if(e.target===back)closeM();}});
-document.addEventListener('keydown',function(e){{if(e.key==='Escape')closeM();}});
+var wb=document.getElementById('mwhybody');wb.hidden=!wb.hidden;}});
+function closeAll(){{document.querySelectorAll('.mback.open').forEach(function(b){{b.classList.remove('open');}});document.body.style.overflow='';}}
+function openModal(id){{document.getElementById(id).classList.add('open');document.body.style.overflow='hidden';}}
+document.querySelectorAll('.mback').forEach(function(back){{
+var x=back.querySelector('.mx');if(x)x.addEventListener('click',closeAll);
+back.addEventListener('click',function(e){{if(e.target===back)closeAll();}});}});
+document.addEventListener('keydown',function(e){{if(e.key==='Escape')closeAll();}});
+[['kpi-total','mstat-t'],['kpi-sentimen','mstat-s'],['kpi-risiko','mstat-r']].forEach(function(p){{
+var b=document.getElementById(p[0]);if(b)b.addEventListener('click',function(){{openModal(p[1]);}});}});
 }})();
 </script>
 </body></html>
