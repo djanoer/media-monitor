@@ -181,11 +181,11 @@ def header_kartu_minimalis(
 
 
 def waktu_pendek(iso: str | None) -> str:
-    """'2026-10-06T06:30:00+00:00' -> '6 Okt 14:30' (WITA, ringkas)."""
+    """'2026-10-06T06:30:00+00:00' -> '6 Okt 14:30' (WIB, ringkas)."""
     dt = fmt.parse_utc(iso)
     if dt is None:
         return ""
-    w = dt + fmt.WITA_OFFSET
+    w = dt + fmt.WIB_OFFSET
     return f"{w.day} {fmt.BULAN_ID[w.month - 1]} {w:%H:%M}"
 
 
@@ -213,7 +213,7 @@ def kartu_artikel(
     isi = (
         f'<div class="mm-card">'
         f'<div><span class="mm-badge" style="background:{col}">{badge}</span>'
-        f'<span class="mm-time" title="{html_mod.escape(fmt.format_wita(pub))}">'
+        f'<span class="mm-time" title="{html_mod.escape(fmt.format_wib(pub))}">'
         f"{html_mod.escape(fmt.waktu_relatif(pub))}</span>"
     )
     if r.get("sentimen"):

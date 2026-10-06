@@ -99,7 +99,7 @@ def ambil_trends(
     """Ambil Google Trends: minat harian, per daerah, frasa terkait.
 
     Lazy import pytrends supaya test/unit tidak butuh instalasinya.
-    tz=480 -> WITA (UTC+8).
+    tz=420 -> WIB (UTC+7).
     jeda_detik: jeda antar request dalam satu topik (anti burst -> 429).
     """
     import time

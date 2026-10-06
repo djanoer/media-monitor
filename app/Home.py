@@ -551,13 +551,13 @@ elif sehat:
 
     _health = f"Scheduler sehat · {fmt.waktu_relatif(acuan)}"
 
-    _upd = fmt.format_wita(acuan)
+    _upd = fmt.format_wib(acuan)
 
 else:
 
     _health = f"Scheduler mungkin berhenti · {fmt.waktu_relatif(acuan)}"
 
-    _upd = fmt.format_wita(acuan)
+    _upd = fmt.format_wib(acuan)
 
 st.markdown(
 
@@ -814,7 +814,7 @@ def _dialog_artikel(a: dict) -> None:
 
         '<div class="mm-detail-time">Dipublikasikan: '
 
-        + html_mod.escape(fmt.format_wita(a.get("published_at"))) + '</div>',
+        + html_mod.escape(fmt.format_wib(a.get("published_at"))) + '</div>',
 
         unsafe_allow_html=True)
 
@@ -1141,7 +1141,7 @@ for _r in range(0, len(names_grid), 4):
                             if _badges:
 
                                 _wkt = html_mod.escape(
-                                    fmt.format_wita(a.get("published_at")))
+                                    fmt.format_wib(a.get("published_at")))
 
                                 st.markdown(
 

@@ -1,6 +1,6 @@
 """Fungsi format murni untuk tampilan (tanpa streamlit, bisa di-unit-test).
 
-Isi: pembersih HTML ringkasan RSS, konversi waktu UTC -> WITA,
+Isi: pembersih HTML ringkasan RSS, konversi waktu UTC -> WIB,
 dan format waktu relatif Bahasa Indonesia.
 """
 
@@ -10,8 +10,8 @@ import datetime
 
 from src.common.text import bersihkan_html
 
-# WITA = UTC+8 tetap, tanpa daylight saving.
-WITA_OFFSET = datetime.timedelta(hours=8)
+# WIB = UTC+7 tetap, tanpa daylight saving.
+WIB_OFFSET = datetime.timedelta(hours=7)
 
 BULAN_ID = [
     "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
@@ -49,13 +49,13 @@ def iso_mundur(jam: int) -> str:
     ).isoformat()
 
 
-def format_wita(iso: str | None) -> str:
-    """'2026-09-25T04:10:00+00:00' -> '25 Sep 2026, 12:10 WITA'."""
+def format_wib(iso: str | None) -> str:
+    """'2026-09-25T04:10:00+00:00' -> '25 Sep 2026, 11:10 WIB'."""
     dt = parse_utc(iso)
     if dt is None:
         return "-"
-    w = dt + WITA_OFFSET
-    return f"{w.day} {BULAN_ID[w.month - 1]} {w.year}, {w:%H:%M} WITA"
+    w = dt + WIB_OFFSET
+    return f"{w.day} {BULAN_ID[w.month - 1]} {w.year}, {w:%H:%M} WIB"
 
 
 def waktu_relatif(
@@ -86,3 +86,7 @@ def menit_sejak(iso: str | None) -> float | None:
         return None
     now = datetime.datetime.now(datetime.timezone.utc)
     return (now - dt).total_seconds() / 60
+
+# Alias lama -> baru (kompatibilitas).
+WITA_OFFSET = WIB_OFFSET
+format_wita = format_wib

@@ -33,7 +33,7 @@ from src.processing.sentimen import kata_berpengaruh
 from src.processing.verification import cek_headline
 from src.storage import repository
 
-WITA = timezone(timedelta(hours=8))
+WIB = timezone(timedelta(hours=7))
 UTC = timezone.utc
 WARNA_RISIKO = {"Rendah": "#34d399", "Sedang": "#fbbf24", "Tinggi": "#f87171"}
 WARNA_SENTIMEN = {"positif": "#34d399", "netral": "#9aa5c4",
@@ -55,7 +55,7 @@ def _ribu(n) -> str:
 
 def _tgl_id(dt: datetime) -> str:
     return (f"{dt.day} {BULAN_ID[dt.month - 1]} {dt.year}, "
-            f"{dt.strftime('%H:%M')} WITA")
+            f"{dt.strftime('%H:%M')} WIB")
 
 
 def _rel_id(ms: float) -> str:
@@ -562,7 +562,7 @@ def ekspor(db_path, out_path: Path, settings: dict,
     per_media = repository.get_artikel_per_media(db_path, limit_per_media=8)
     topiks = repository.daftar_topik_respon(db_path)
 
-    now = datetime.now(WITA)
+    now = datetime.now(WIB)
     now_iso = now.isoformat()
 
     # Kesehatan scheduler
