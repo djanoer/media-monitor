@@ -106,3 +106,18 @@ def test_detail_artikel_tanpa_analisa(tmp_path):
     d = eks._detail_artikel(a, {}, {}, "Tempo")
     assert "belum dianalisa" in d["badge_r"]
     assert d["isi"] == [] and d["title"] == "Judul"
+
+
+def test_detail_isi_hanya_kutipan_yang_dianalisa():
+    isi = ("Kalimat pertama tentang banjir bandang. "
+           "Kalimat kedua soal evakuasi warga. "
+           "Kalimat ketiga yang tidak ikut dianalisa. " * 10)
+    a = {"url": "u", "media": "tempo", "title": "Banjir",
+         "summary": "", "isi_lengkap": isi,
+         "published_at": "", "sentimen": "negatif",
+         "sentimen_skor": -3.0, "risiko": "Tinggi", "risiko_skor": 80.0}
+    d = eks._detail_artikel(a, {"analisa": {}, "verification": {}}, {}, "Tempo")
+    assert len(d["isi"]) == 1  # satu kutipan, bukan full isi
+    assert "Kalimat pertama" in d["isi"][0]
+    assert "tidak ikut dianalisa" not in d["isi"][0]
+    assert len(d["isi"][0]) <= 2001

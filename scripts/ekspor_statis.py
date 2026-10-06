@@ -28,7 +28,7 @@ from src.processing.risiko import komponen_risiko
 from src.processing.sentimen import kata_berpengaruh
 from src.processing.verification import cek_headline
 from src.storage import repository
-from app.komponen import mirip_judul, teks_ringkasan_mentah
+from app.komponen import teks_ringkasan_mentah
 
 WITA = timezone(timedelta(hours=8))
 UTC = timezone.utc
@@ -180,12 +180,10 @@ def _detail_artikel(a: dict, settings: dict, verdicts: dict,
            + "".join(skala_r) +
            f'<div class="skhead">💬 SKALA SENTIMEN</div>' + "".join(skala_s))
 
-    isi = (a.get("isi_lengkap") or "").strip()
-    paragraf = [p.strip() for p in isi.split("\n\n") if p.strip()]
-    if not paragraf:
-        s = bersihkan_html(a.get("summary") or "").strip()
-        if s and not mirip_judul(s, a.get("title")):
-            paragraf = [s]
+    # Teks yang ditampilkan di modal: BUKAN full isi, melainkan persis
+    # potongan teks yang dipakai menentukan sentimen & risiko
+    # (teks_ringkasan_mentah, maks 2000 char).
+    kutipan = teks_ringkasan_mentah(a, max_len=2000)
     return {
         "media": display,
         "url": a.get("url") or "",
@@ -195,7 +193,7 @@ def _detail_artikel(a: dict, settings: dict, verdicts: dict,
         "ai": ai,
         "why": why,
         "pub": a.get("published_at") or "",
-        "isi": paragraf,
+        "isi": [kutipan] if kutipan else [],
     }
 
 
@@ -415,7 +413,7 @@ ul{margin:4px 0;padding-left:18px;font-size:.85rem;color:#c6d2e8}
 .mtitle{font-size:1.4rem;font-weight:700;margin:10px 0;line-height:1.35}
 .mai{background:#1a2240;border:1px solid #2a3a66;border-radius:10px;padding:12px 14px;margin:12px 0;font-size:.9rem;line-height:1.6;color:#c6d2e8}
 .mpub{color:#6b7280;font-size:.8rem;margin-bottom:12px}
-.misi p{margin:0 0 14px;line-height:1.7;color:#dbe3f5}
+.misi p{margin:0 0 14px;line-height:1.7;color:#dbe3f5;font-size:.82rem;text-align:justify}
 .skala{border:1px solid #2a3352;border-radius:8px;padding:8px 12px;margin:6px 0;font-size:.85rem;color:#c6d2e8}
 .skala.on{border-width:2px}
 .skala b{color:#e6ebf5}
