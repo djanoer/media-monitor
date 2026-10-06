@@ -8,7 +8,8 @@ Mode --auto: ambil topik manual dari config + N topik terhangat dari judul
 artikel 24 jam terakhir, lalu proses satu per satu dengan jeda antar query
 Trends + backoff eksponensial bila kena rate-limit (429).
 
-Jadwal yang disarankan (scheduler laptop, WITA): 07:00 dan 19:00, 2x sehari.
+Dijalankan MANUAL dari laptop Bor: double-click respon-publik.bat
+(tidak ada scheduler otomatis).
 
 Butuh YOUTUBE_API_KEY di environment untuk bagian YouTube; tanpa itu
 bagian YouTube dilewati dan Trends tetap jalan. Butuh pytrends:

@@ -55,7 +55,7 @@ respon_publik:
   topik_otomatis: 3              # N topik terhangat dari 24 jam terakhir
   topik_manual: []               # kosong = full otomatis 24 jam (karhutla: arsip)
   topik_maks_total: 5            # batas total topik per jalan
-  jadwal: "07:00, 19:00"         # WITA, 2x sehari (scheduler laptop Bor)
+  cara_jalan: "manual via respon-publik.bat (double-click di laptop)"
 
 # Analisa sentimen + risiko per artikel (Fase F).
 analisa:
