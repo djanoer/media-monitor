@@ -357,9 +357,6 @@ body{background:#0a0f1e;color:#e6ebf5;font-family:system-ui,-apple-system,'Segoe
 .kpi .s b{color:#e6ebf5}
 .mbar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:#232c4d}
 .mbar div{height:100%}
-.pills{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 22px}
-.pill{display:flex;align-items:center;gap:8px;border:1px solid #2a3352;border-radius:20px;padding:7px 14px;font-size:.85rem;color:#c6d2e8;background:#0d1326}
-.pill i{width:9px;height:9px;border-radius:50%;display:inline-block}
 .dist{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px}
 @media(max-width:800px){.dist{grid-template-columns:1fr}}
 .dhead{font-size:.72rem;color:#8ea0c9;letter-spacing:2px;margin-bottom:8px}
@@ -473,12 +470,6 @@ def ekspor(db_path, out_path: Path, settings: dict,
         f'T {_ribu(m["rt"])}</div>'
         f'{_bar([(m["rr"], WARNA_RISIKO["Rendah"]), (m["rs"], WARNA_RISIKO["Sedang"]), (m["rt"], WARNA_RISIKO["Tinggi"])])}</div>')
 
-    pills = "".join(
-        f'<span class="pill"><i style="background:'
-        f'{"#34d399" if m["status"].get(x["name"], {}).get("status") == "ok" else "#6b7280"}'
-        f'"></i>{_esc(x["display"])}</span>'
-        for x in media_list)
-
     dist = (
         f'<div class="dist"><div>'
         f'<div class="dhead">SENTIMEN · {_ribu(m["total"])} BERITA</div>'
@@ -531,7 +522,6 @@ def ekspor(db_path, out_path: Path, settings: dict,
 </div>
 </div>
 <div class="kpis">{kpi1}{kpi2}{kpi3}</div>
-<div class="pills">{pills}</div>
 {dist}
 <nav class="topnav"><a href="#berita">📰 Berita per media</a><a href="#respons">📊 Respons Publik</a></nav>
 <h2 class="sec" id="berita">Berita per media</h2>
