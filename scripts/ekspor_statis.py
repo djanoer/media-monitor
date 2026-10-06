@@ -340,7 +340,7 @@ def _metrik(db_path, media_list: list[dict]) -> dict:
              "Sedang" if avg_r >= 22 else "Rendah")
     repository.migrate_isi_lengkap(db_path)
     repository.migrate_ringkasan_ai(db_path)
-    nm = repository.count_media_terisi(db_path)
+    nm = len(media_list)
     ok_isi = repository.count_isi_lengkap(db_path)
     last = repository.get_last_run(db_path)
     umur_ms, sehat = None, "unknown"
