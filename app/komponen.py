@@ -128,21 +128,22 @@ def cuplikan(r: dict, max_len: int = 140) -> str:
     return html_mod.escape(teks_ringkasan_mentah(r, max_len))
 
 
-def buka_kartu_media(
+def kepala_kartu_media(
     name: str, display_name: str, color: str,
     dist: dict, n_arts: int,
 ) -> str:
-    """HTML pembuka kartu kolom media: header + mini-bar + div scroll.
+    """Header kartu kolom media: dot + nama + count + mini-bar.
 
-    Daftar artikel di-render oleh pemanggil sebagai st.button native per
-    judul (dialog langsung, tanpa trik ?art=), lalu tutup_kartu_media().
+    Satu blok HTML seimbang (tanpa div tak tertutup). Daftar artikel
+    di-render pemanggil sebagai st.button native per judul di dalam
+    st.container(height=..., border=True) agar klik langsung membuka
+    dialog tanpa navigasi ?art=.
     """
     ds = (dist or {}).get("sentimen", {})
     dr = (dist or {}).get("risiko", {})
     tot_s, tot_r = sum(ds.values()), sum(dr.values())
     nama = html_mod.escape(display_name)
     return (
-        f'<div class="mi-card" id="card-{name}">'
         f'<div class="mi-gridhead">'
         f'<span style="width:9px;height:9px;border-radius:50%;'
         f'display:inline-block;background:{color};'
@@ -152,57 +153,6 @@ def buka_kartu_media(
         f'{n_arts}</span></div>'
         f'{bar_agregat("Sentimen", tot_s, [("positif", ds.get("positif", 0), "#34d399"), ("netral", ds.get("netral", 0), "#b6c6f0"), ("negatif", ds.get("negatif", 0), "#fb7185")])}'
         f'{bar_agregat("Risiko", tot_r, [("Rendah", dr.get("Rendah", 0), "#34d399"), ("Sedang", dr.get("Sedang", 0), "#fbbf24"), ("Tinggi", dr.get("Tinggi", 0), "#fb7185")])}'
-        f'<div class="mi-card-items">'
-    )
-
-
-def tutup_kartu_media() -> str:
-    """Penutup div scroll + div kartu (pasangan buka_kartu_media)."""
-    return "</div></div>"
-
-
-def buka_item_artikel(a: dict) -> str:
-    """HTML pembuka satu item berita: box + pills (tanpa judul).
-
-    Judul di-render pemanggil sebagai st.button native agar klik langsung
-    membuka dialog tanpa navigasi ?art=.
-    """
-    col = WARNA_RISIKO.get(a.get("risiko"), "#8ea0c9")
-    return (
-        f'<div class="mi-item" style="border-left-color:{col}">'
-        f'{pills_artikel(a)}'
-    )
-
-
-def tutup_item_artikel(a: dict) -> str:
-    """Cuplikan ringkasan + penutup div item (pasangan buka_item_artikel)."""
-    cuplik = cuplikan(a)
-    sum_html = (f'<div class="mi-item-sum">{cuplik}</div>'
-                if cuplik else "")
-    return f"{sum_html}</div>"
-
-
-def kartu_media_grid(
-    name: str, display_name: str, color: str,
-    dist: dict, arts: list[dict],
-) -> str:
-    """Satu kartu kolom media utuh (satu blok HTML).
-
-    CATATAN: tidak lagi dipakai Home.py (sudah pakai st.button native per
-    judul). Disimpan untuk kompatibilitas test; judul berupa span biasa.
-    """
-    items = []
-    for a in arts:
-        judul = html_mod.escape(a.get("title") or "(tanpa judul)")
-        items.append(
-            f"{buka_item_artikel(a)}"
-            f'<span class="mi-judul">{judul}</span>'
-            f"{tutup_item_artikel(a)}")
-    gabung = "".join(items)
-    return (
-        f"{buka_kartu_media(name, display_name, color, dist, len(arts))}"
-        f"{gabung}"
-        f"{tutup_kartu_media()}"
     )
 
 

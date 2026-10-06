@@ -126,35 +126,17 @@ def test_get_artikel_per_media(tmp_path):
     assert "risiko" in g["kompas"][0]
 
 
-def test_kartu_media_grid():
+def test_kepala_kartu_media():
     from app import komponen as kmp
-    html = kmp.kartu_media_grid(
-        "kompas", "Kompas", "#4285f4",
-        {"sentimen": {"negatif": 2}, "risiko": {"Tinggi": 2}},
-        [{"url": "u1", "title": "Judul berita", "summary": "Isi ringkasan",
-          "sentimen": "negatif", "risiko": "Tinggi"}])
-    assert 'id="card-kompas"' in html
-    assert "Judul berita" in html
-    assert "#fb7185" in html  # border + badge Tinggi
-    assert "negatif" in html
-    assert "?art=" not in html  # hyperlink trik dihapus -> st.button native
-    assert "mi-card-items" in html  # area scroll mandiri
-
-
-def test_buka_tutup_kartu_media():
-    from app import komponen as kmp
-    buka = kmp.buka_kartu_media(
+    html = kmp.kepala_kartu_media(
         "kompas", "Kompas", "#4285f4",
         {"sentimen": {"negatif": 2}, "risiko": {"Tinggi": 2}}, 1)
-    assert 'id="card-kompas"' in buka
-    assert buka.count("<div") > buka.count("</div>")  # div dibuka
-    assert kmp.tutup_kartu_media() == "</div></div>"
-    item_buka = kmp.buka_item_artikel(
-        {"risiko": "Tinggi", "sentimen": "negatif"})
-    assert 'class="mi-item"' in item_buka
-    item_tutup = kmp.tutup_item_artikel(
-        {"title": "T", "summary": "Isi ringkasan", "isi_lengkap": ""})
-    assert item_tutup.endswith("</div>")
+    assert "Kompas" in html
+    assert "#fb7185" in html  # badge Tinggi
+    assert "negatif" in html
+    assert "?art=" not in html  # trik hyperlink dihapus
+    # satu blok HTML seimbang (tidak ada div tak tertutup)
+    assert html.count("<div") == html.count("</div>")
 
 
 def test_kata_berpengaruh_negatif():
