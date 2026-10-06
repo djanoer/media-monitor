@@ -209,3 +209,20 @@ def test_pencatatan_run_dan_media(tmp_path):
     assert len(logs) == 2
     assert logs[0]["media"] == "kompas" and logs[0]["status"] == "error"
     assert logs[1]["media"] == "tempo" and logs[1]["new_articles"] == 5
+
+
+def test_ringkasan_ai_cache(tmp_path):
+    db = tmp_path / "test.db"
+    repository.init_db(db)  # skema baru sudah mencakup ringkasan_ai
+    assert repository.migrate_ringkasan_ai(db) is False  # idempoten
+    repository.insert_articles(db, [_artikel("u1"), _artikel("u2")])
+    repository.simpan_isi(db, "u1", "Isi lengkap artikel satu.")
+    repository.simpan_isi(db, "u2", "Isi lengkap artikel dua.")
+    antre = repository.artikel_tanpa_ringkasan_ai(db, limit=10)
+    assert {a["url"] for a in antre} == {"u1", "u2"}
+    repository.simpan_ringkasan_ai(db, "u1", "Ringkasan AI satu.")
+    antre = repository.artikel_tanpa_ringkasan_ai(db, limit=10)
+    assert [a["url"] for a in antre] == ["u2"]
+    # get_artikel_per_media ikut memuat ringkasan_ai
+    per = repository.get_artikel_per_media(db, limit_per_media=8)
+    assert per["tempo"][0]["ringkasan_ai"] in ("Ringkasan AI satu.", None)

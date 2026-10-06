@@ -76,6 +76,17 @@ analisa:
 storage:
   db_path: "data/media_monitor.db"
 
+# Ringkasan AI via Groq (gratis). Dijalankan saat ekspor_statis: artikel
+# terbaru yg belum punya ringkasan_ai diproses bertahap + cache di DB.
+# Butuh GROQ_API_KEY di env/.env; tanpa key -> lewati diam-diam (fallback
+# ringkasan ekstraktif). Best-effort: gagal/429 -> berhenti, tidak retry.
+ringkasan_ai:
+  aktif: true
+  model: "qwen/qwen3.8-27b"
+  maks_artikel: 30        # batas artikel diproses per ekspor
+  jeda_detik: 3           # jeda antar request (hindari rate limit)
+  max_tokens: 300
+
 # Unduh isi lengkap artikel (Fase H): agar ringkasan dashboard bukan
 # sekadar judul. Dijalankan otomatis di akhir tiap siklus fetch.
 unduh_isi:

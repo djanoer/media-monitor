@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS articles (
     title TEXT,
     summary TEXT,
     isi_lengkap TEXT,
+    ringkasan_ai TEXT,
     link TEXT,
     published_at TEXT,
     fetched_at TEXT NOT NULL,
@@ -933,6 +934,7 @@ def get_artikel_per_media(
             hasil[m] = [
                 dict(r) for r in conn.execute(
                     "SELECT url, media, title, summary, isi_lengkap,"
+                    " ringkasan_ai,"
                     " published_at,"
                     " sentimen, sentimen_skor, risiko, risiko_skor"
                     " FROM articles WHERE media = ?"
@@ -951,6 +953,45 @@ def migrate_isi_lengkap(db_path: str | pathlib.Path) -> bool:
             return False
         conn.execute("ALTER TABLE articles ADD COLUMN isi_lengkap TEXT")
         return True
+
+
+def migrate_ringkasan_ai(db_path: str | pathlib.Path) -> bool:
+    """Tambah kolom ringkasan_ai ke articles bila belum ada (idempoten).
+
+    Cache ringkasan AI (Groq) per artikel agar API hanya dipanggil sekali.
+    """
+    with _connect(db_path) as conn:
+        ada = {r[1] for r in conn.execute("PRAGMA table_info(articles)")}
+        if "ringkasan_ai" in ada:
+            return False
+        conn.execute("ALTER TABLE articles ADD COLUMN ringkasan_ai TEXT")
+        return True
+
+
+def simpan_ringkasan_ai(db_path: str | pathlib.Path, url: str, teks: str) -> None:
+    """Simpan ringkasan AI ke cache (idempoten per URL)."""
+    with _connect(db_path) as conn:
+        conn.execute("UPDATE articles SET ringkasan_ai = ? WHERE url = ?",
+                     (teks, url))
+
+
+def artikel_tanpa_ringkasan_ai(
+    db_path: str | pathlib.Path, limit: int = 30
+) -> list[dict]:
+    """Artikel terbaru yg isinya sudah diunduh tapi belum punya ringkasan AI.
+
+    Kembalikan [{url, title, isi_lengkap}] terbaru dulu.
+    """
+    with _connect(db_path) as conn:
+        return [
+            dict(r) for r in conn.execute(
+                "SELECT url, title, isi_lengkap FROM articles"
+                " WHERE ringkasan_ai IS NULL"
+                " AND isi_lengkap IS NOT NULL AND TRIM(isi_lengkap) != ''"
+                " ORDER BY published_at DESC, id DESC LIMIT ?",
+                (limit,),
+            )
+        ]
 
 
 def artikel_tanpa_isi(

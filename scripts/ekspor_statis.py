@@ -16,8 +16,10 @@ from __future__ import annotations
 import argparse
 import html as html_mod
 import json
+import os
 import re
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -25,6 +27,7 @@ sys.path.insert(0, ".")
 
 from src.common.config import load_media, load_settings
 from src.common.text import bersihkan_html
+from src.processing.llm_groq import ringkas_artikel
 from src.processing.risiko import komponen_risiko
 from src.processing.sentimen import kata_berpengaruh
 from src.processing.verification import cek_headline
@@ -171,6 +174,39 @@ def _skala_sentimen_html(sent: str) -> str:
     return "".join(rows)
 
 
+def _isi_ringkasan_ai(db_path, settings: dict) -> int:
+    """Isi cache ringkasan_ai via Groq untuk artikel terbaru yg belum punya.
+
+    Best-effort: tanpa key / gagal / 429 -> berhenti diam-diam, ekspor tetap
+    jalan dengan ringkasan ekstraktif. Kembalikan jumlah yg berhasil.
+    """
+    cfg = settings.get("ringkasan_ai") or {}
+    if not cfg.get("aktif", True):
+        return 0
+    api_key = os.environ.get("GROQ_API_KEY", "").strip()
+    if not api_key:
+        return 0
+    repository.migrate_ringkasan_ai(db_path)
+    antre = repository.artikel_tanpa_ringkasan_ai(
+        db_path, limit=int(cfg.get("maks_artikel", 30)))
+    if not antre:
+        return 0
+    jeda = float(cfg.get("jeda_detik", 3))
+    model = cfg.get("model", "qwen/qwen3.8-27b")
+    max_tokens = int(cfg.get("max_tokens", 300))
+    n = 0
+    for a in antre:
+        teks = ringkas_artikel(a.get("title") or "",
+                               a.get("isi_lengkap") or "",
+                               api_key, model=model, max_tokens=max_tokens)
+        if not teks:
+            break  # gagal/kuota -> berhenti, coba lagi ekspor berikutnya
+        repository.simpan_ringkasan_ai(db_path, a["url"], teks)
+        n += 1
+        time.sleep(jeda)
+    return n
+
+
 def _detail_artikel(a: dict, settings: dict, verdicts: dict,
                     display: str) -> dict:
     """Bahan modal detail artikel (precompute, ala dialog lokal)."""
@@ -213,9 +249,9 @@ def _detail_artikel(a: dict, settings: dict, verdicts: dict,
            f'<div class="skhead">💬 SKALA SENTIMEN</div>'
            + _skala_sentimen_html(sent))
 
-    # Ringkasan baca (min 3 kalimat) dari isi_lengkap bila sudah diunduh.
-    # Teks yang dianalisis = summary RSS (yang benar-benar dihitung).
-    ringkasan = _kalimat_awal(a, max_kalimat=5, max_len=900)
+    # Ringkasan baca: ringkasan AI (cache) bila ada, else ekstraktif min 3 kalimat.
+    ringkasan_ai = (a.get("ringkasan_ai") or "").strip()
+    ringkasan = ringkasan_ai or _kalimat_awal(a, max_kalimat=5, max_len=900)
     return {
         "media": display,
         "url": a.get("url") or "",
@@ -226,6 +262,7 @@ def _detail_artikel(a: dict, settings: dict, verdicts: dict,
         "why": why,
         "pub": a.get("published_at") or "",
         "ringkasan": [ringkasan] if ringkasan else [],
+        "ringkasan_ai": bool(ringkasan_ai),
         "dianalisis": [ringkas] if ringkas else [],
     }
 
@@ -276,6 +313,7 @@ def _metrik(db_path, media_list: list[dict]) -> dict:
     kat_r = ("Tinggi" if avg_r >= 55 else
              "Sedang" if avg_r >= 22 else "Rendah")
     repository.migrate_isi_lengkap(db_path)
+    repository.migrate_ringkasan_ai(db_path)
     nm = repository.count_media_terisi(db_path)
     ok_isi = repository.count_isi_lengkap(db_path)
     last = repository.get_last_run(db_path)
@@ -487,6 +525,7 @@ def ekspor(db_path, out_path: Path, settings: dict,
            media_list: list[dict]) -> dict:
     """Render docs/index.html dari DB. Kembalikan statistik."""
     m = _metrik(db_path, media_list)
+    n_ai = _isi_ringkasan_ai(db_path, settings)
     per_media = repository.get_artikel_per_media(db_path, limit_per_media=8)
     topiks = repository.daftar_topik_respon(db_path)
 
@@ -705,6 +744,7 @@ document.getElementById('m-pub').textContent=d.pub?('Dipublikasikan: '+d.pub):''
 var rg=document.getElementById('m-ring');
 rg.innerHTML=d.ringkasan.map(function(p){{return '<p>'+esc(p)+'</p>';}}).join('');
 var rgl=rg.previousElementSibling;rgl.style.display=rg.style.display=d.ringkasan.length?'':'none';
+rgl.textContent=d.ringkasan_ai?'📝 RINGKASAN ✨ AI':'📝 RINGKASAN';
 var an=document.getElementById('m-isi');
 an.innerHTML=d.dianalisis.map(function(p){{return '<p>'+esc(p)+'</p>';}}).join('')||'<p class="muted">Hanya judul yang dihitung (ringkasan kosong).</p>';
 back.classList.add('open');document.body.style.overflow='hidden';}}
