@@ -346,7 +346,13 @@ body{background:#0a0f1e;color:#e6ebf5;font-family:system-ui,-apple-system,'Segoe
 .pulse{animation:pulse 2s infinite}
 @keyframes pulse{0%{box-shadow:0 0 0 0 #34d39966}70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
 .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:4px 0 18px}
-@media(max-width:800px){.kpis{grid-template-columns:1fr}}
+@media(max-width:800px){
+.kpis{grid-template-columns:1fr}
+.hero{flex-direction:column;align-items:stretch;padding:24px 4px 12px}
+.hero h1{font-size:1.9rem}
+.hright{text-align:left;background:#0d1326;border:1px solid #1e2745;border-radius:12px;padding:12px 14px}
+.sched{justify-content:flex-start}
+}
 .kpi{background:#131a30;border:1px solid #1e2745;border-radius:16px;padding:20px 22px}
 .kpi .v{font-size:2.2rem;font-weight:800}
 .kpi .v .per{font-size:1.1rem;color:#8ea0c9;font-weight:600}
