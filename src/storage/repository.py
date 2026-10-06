@@ -412,6 +412,43 @@ def get_titles_keyword(
         return [r["title"] for r in rows if r["title"]]
 
 
+def get_artikel_keyword(
+    db_path: str | pathlib.Path, keyword: str, limit: int = 10
+) -> list[dict]:
+    """Artikel terbaru yang mengandung keyword di judul/ringkasan (read-only).
+
+    Dipakai halaman Respons Publik: sisi berita dari 15 media per topik.
+    """
+    klausa, params = _klausa_keyword(keyword)
+    with _connect(db_path) as conn:
+        return [
+            dict(r)
+            for r in conn.execute(
+                "SELECT url, media, title, summary, published_at, sentimen,"
+                " risiko, risiko_skor FROM articles"
+                f" WHERE {klausa}"
+                " ORDER BY COALESCE(published_at, fetched_at) DESC LIMIT ?",
+                (*params, limit),
+            )
+        ]
+
+
+def daftar_topik_respon(db_path: str | pathlib.Path) -> list[str]:
+    """Daftar topik yang punya data respons publik (YouTube/Trends).
+
+    Urut dari yang datanya paling baru; dipakai pemilih topik di halaman
+    Respons Publik.
+    """
+    with _connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT topik, MAX(fetched_at) AS t FROM ("
+            " SELECT topik, fetched_at FROM youtube_videos"
+            " UNION ALL SELECT topik, fetched_at FROM trends_ringkas"
+            ") GROUP BY topik ORDER BY t DESC"
+        )
+        return [r["topik"] for r in rows if r["topik"]]
+
+
 def get_watchlist(db_path: str | pathlib.Path) -> list[str]:
     """Daftar keyword/hashtag yang dipantau, urut waktu ditambahkan."""
     with _connect(db_path) as conn:
