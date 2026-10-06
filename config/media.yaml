@@ -106,3 +106,10 @@ media:
     feed: "https://news.google.com/rss/search?q=site:merdeka.com&hl=id&gl=ID&ceid=ID:id"
     type: gnews
     active: true
+  - name: suara
+    display: Suara.com
+    tier: 1  # kredibilitas sumber (Fase C; perlu validasi Bor)
+    color: "#F59F00"
+    feed: "https://news.google.com/rss/search?q=site:suara.com&hl=id&gl=ID&ceid=ID:id"
+    type: gnews
+    active: true
