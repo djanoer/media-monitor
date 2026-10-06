@@ -481,7 +481,10 @@ h2.sec::before{content:"";width:4px;height:1.2em;background:linear-gradient(#4da
 .topnav{position:sticky;top:0;z-index:10;background:#0a0f1ee6;backdrop-filter:blur(8px);padding:10px 4px;display:flex;gap:18px;border-bottom:1px solid #1e2745;margin:0 -20px;padding-left:24px}
 .topnav a{color:#9ca3af;text-decoration:none;font-size:.85rem;font-weight:600}
 .topnav a:hover{color:#7dd3fc}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:1200px){.grid{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:600px){.grid{grid-template-columns:1fr;}}
 .card{background:#0d1326;border:1px solid #1e2745;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;transition:transform .15s ease,border-color .15s ease}
 .card:hover{transform:translateY(-3px);border-color:#33406b}
 .card header{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #1e2745}
