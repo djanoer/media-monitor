@@ -37,48 +37,31 @@ st.markdown("""
     radial-gradient(700px 500px at 50% 100%, rgba(167,139,250,.08), transparent);}
 .stApp, .stApp * {font-family:"Segoe UI", system-ui, -apple-system, Roboto,
   "Helvetica Neue", Arial, sans-serif;}
-/* kartu kolom media = bordered container, tinggi seragam + scroll */
-div[data-testid="stVerticalBlockBorderWrapper"] {
-  border:1px solid rgba(90,130,255,.18) !important;
-  border-radius:12px !important;
-  background:linear-gradient(180deg, #111d3c, #0e1730) !important;
-  padding:10px 12px !important;
-  height:640px;
-  overflow-y:auto;
-  scrollbar-width:thin;
-  scrollbar-color:rgba(90,130,255,.4) transparent;}
-div[data-testid="stVerticalBlockBorderWrapper"]::-webkit-scrollbar {width:6px;}
-div[data-testid="stVerticalBlockBorderWrapper"]::-webkit-scrollbar-thumb {
+/* kartu kolom media: satu blok HTML milik sendiri (tidak bergantung
+   testid internal Streamlit) — header tetap, isi scroll mandiri */
+.mi-card {border:1px solid rgba(90,130,255,.18); border-radius:12px;
+  background:linear-gradient(180deg, #111d3c, #0e1730);
+  padding:10px 12px; height:640px; display:flex; flex-direction:column;}
+.mi-card-items {overflow-y:auto; flex:1; min-height:0;
+  scrollbar-width:thin; scrollbar-color:rgba(90,130,255,.4) transparent;}
+.mi-card-items::-webkit-scrollbar {width:6px;}
+.mi-card-items::-webkit-scrollbar-thumb {
   background:rgba(90,130,255,.4); border-radius:3px;}
 /* Tombol expand/collapse sidebar: font ikon Material kadang gagal dimuat
    sehingga muncul teks ligature "keyboard_double_arrow_right".
-   (Terverifikasi di bundle Streamlit 1.65: testid stExpandSidebarButton
-   saat sidebar tertutup, stSidebarCollapseButton saat terbuka.) */
+   Terverifikasi di bundle Streamlit 1.65:
+   - sidebar tertutup -> testid ada di <button> (stExpandSidebarButton)
+   - sidebar terbuka  -> testid ada di wrapper <div> (stSidebarCollapseButton),
+     tombol asli di dalamnya (tetap bisa diklik). */
 button[data-testid="stExpandSidebarButton"],
-button[data-testid="stSidebarCollapseButton"] {font-size:0 !important;}
+[data-testid="stSidebarCollapseButton"] button {font-size:0 !important;}
 button[data-testid="stExpandSidebarButton"] *,
-button[data-testid="stSidebarCollapseButton"] * {display:none !important;}
+[data-testid="stSidebarCollapseButton"] button * {font-size:0 !important;}
 button[data-testid="stExpandSidebarButton"]::after,
-button[data-testid="stSidebarCollapseButton"]::after {
+[data-testid="stSidebarCollapseButton"] button::after {
   font-size:22px; color:#8ea0c9; line-height:1;}
 button[data-testid="stExpandSidebarButton"]::after {content:"»";}
-button[data-testid="stSidebarCollapseButton"]::after {content:"«";}
-/* Judul artikel sebagai hyperlink (button Streamlit yang disamarkan):
-   klik judul -> dialog detail. */
-div[data-testid="stButton"] {margin:0 !important;}
-div[data-testid="stButton"] button {
-  background:transparent !important; border:none !important;
-  box-shadow:none !important; padding:0 !important; margin:6px 0 0 !important;
-  color:#e6ecff !important; font-size:13px !important; font-weight:600 !important;
-  line-height:1.35 !important; text-align:left !important;
-  white-space:normal !important; height:auto !important; min-height:0 !important;
-  width:100% !important;}
-div[data-testid="stButton"] button:hover {
-  color:#8fb0ff !important; text-decoration:underline !important;
-  background:transparent !important; border:none !important;}
-div[data-testid="stButton"] button:focus {
-  box-shadow:none !important; outline:none !important;}
-.mi-pemisah {border-bottom:1px solid rgba(255,255,255,.06); margin:10px 0 2px;}
+[data-testid="stSidebarCollapseButton"] button::after {content:"«";}
 .mm-penjelasan {background:rgba(79,140,255,.10);
   border:1px solid rgba(90,130,255,.25); border-radius:10px;
   padding:10px 12px; margin:8px 0; color:#dbe4ff; font-size:13px;}
@@ -98,6 +81,10 @@ div[data-testid="stButton"] button:focus {
   border-left:3px solid #8ea0c9; padding:8px 12px; margin:8px 0;}
 .mi-item-title {font-size:13px; font-weight:600; color:#e6ecff;
   line-height:1.35; margin-top:6px;}
+/* judul sebagai hyperlink real -> buka dialog detail */
+a.mi-judul {font-size:13px; font-weight:600; color:#e6ecff;
+  line-height:1.35; margin-top:6px; display:block; text-decoration:none;}
+a.mi-judul:hover {color:#8fb0ff; text-decoration:underline;}
 .mi-item-sum {font-size:11.5px; color:#8ea0c9; line-height:1.5; margin-top:4px;
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
   overflow:hidden;}
@@ -236,10 +223,18 @@ def _dialog_artikel(a: dict) -> None:
     with st.expander("🔍 Kenapa label ini?", expanded=False):
         _penjelasan_label(a)
 
-    ringkas = kmp.teks_ringkasan_mentah(a, max_len=600)
-    if ringkas:
-        st.markdown("**Ringkasan**")
-        st.write(ringkas)
+    isi = (a.get("isi_lengkap") or "").strip()
+    if isi:
+        st.markdown("**Isi berita**")
+        for _pg in isi.split("\n\n"):
+            _pg = _pg.strip()
+            if _pg:
+                st.write(_pg)
+    else:
+        _sum = fmt.bersihkan_html(a.get("summary") or "").strip()
+        if _sum and not kmp.mirip_judul(_sum, a.get("title")):
+            st.markdown("**Ringkasan**")
+            st.write(_sum)
     st.link_button("Buka sumber ↗", a["url"])
 
 
@@ -325,45 +320,23 @@ grid = repository.get_artikel_per_media(db_path, limit_per_media=per_media)
 _VERDICTS = repository.get_verdicts_artikel(db_path)
 names_grid = [m for m in names if m in grid]
 
-cols = st.columns(4)
-for i, name in enumerate(names_grid):
-    arts = grid[name]
-    d = dist_pm.get(name, {"sentimen": {}, "risiko": {}})
-    ds, dr = d["sentimen"], d["risiko"]
-    col = warna[name]
-    with cols[i % 4]:
-        with st.container(border=True):
+# Dialog detail via hyperlink judul (?art=<url>): buka saat param ada,
+# bersihkan setelah ditutup agar refresh tak membuka lagi.
+_art_param = st.query_params.get("art")
+if _art_param:
+    _target = next(
+        (a for arts in grid.values() for a in arts if a["url"] == _art_param),
+        None)
+    if _target is not None:
+        _dialog_artikel(_target)
+    st.query_params.clear()
+
+for _r in range(0, len(names_grid), 4):
+    _cols = st.columns(4)
+    for _col, _name in zip(_cols, names_grid[_r:_r + 4]):
+        with _col:
             st.markdown(
-                f'<div class="mi-gridhead">'
-                f'<span style="width:9px;height:9px;border-radius:50%;'
-                f'display:inline-block;background:{col};'
-                f'box-shadow:0 0 8px {col}"></span>'
-                f'<span class="mi-gridname">'
-                f'{html_mod.escape(display[name])}</span>'
-                f'<span class="mi-gridcount" style="background:{col}">'
-                f'{len(arts)}</span></div>',
-                unsafe_allow_html=True,
-            )
-            st.markdown(kmp.bar_agregat(
-                "Sentimen", sum(ds.values()),
-                [("positif", ds.get("positif", 0), "#34d399"),
-                 ("netral", ds.get("netral", 0), "#b6c6f0"),
-                 ("negatif", ds.get("negatif", 0), "#fb7185")],
-            ), unsafe_allow_html=True)
-            st.markdown(kmp.bar_agregat(
-                "Risiko", sum(dr.values()),
-                [("Rendah", dr.get("Rendah", 0), "#34d399"),
-                 ("Sedang", dr.get("Sedang", 0), "#fbbf24"),
-                 ("Tinggi", dr.get("Tinggi", 0), "#fb7185")],
-            ), unsafe_allow_html=True)
-            for a in arts:
-                st.markdown(kmp.pills_artikel(a), unsafe_allow_html=True)
-                if st.button(a["title"] or "(tanpa judul)",
-                             key=f"judul-{a['url']}"):
-                    _dialog_artikel(a)
-                cuplik = kmp.cuplikan(a)
-                if cuplik:
-                    st.markdown(f'<div class="mi-item-sum">{cuplik}</div>',
-                                unsafe_allow_html=True)
-                st.markdown('<div class="mi-pemisah"></div>',
-                            unsafe_allow_html=True)
+                kmp.kartu_media_grid(
+                    _name, display[_name], warna[_name],
+                    dist_pm.get(_name, {}), grid[_name]),
+                unsafe_allow_html=True)

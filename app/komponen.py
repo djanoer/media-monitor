@@ -128,24 +128,49 @@ def cuplikan(r: dict, max_len: int = 140) -> str:
     return html_mod.escape(teks_ringkasan_mentah(r, max_len))
 
 
-def item_berita_grid(r: dict, max_judul: int = 110,
-                      max_ringkas: int = 130) -> str:
-    """Satu item berita untuk grid kolom media (ala referensi).
+def kartu_media_grid(
+    name: str, display_name: str, color: str,
+    dist: dict, arts: list[dict],
+) -> str:
+    """Satu kartu kolom media utuh (satu blok HTML).
 
-    Border kiri berwarna sesuai level risiko; badge sentimen + risiko;
-    judul + cuplikan ringkasan di bawahnya. (Dipakai untuk render
-    non-interaktif; halaman Home memakai pills_artikel + tombol judul.)
+    Header (dot + nama + count) dan mini-bar sentimen/risiko tetap di
+    atas; daftar artikel scroll mandiri (.mi-card-items). Judul berupa
+    hyperlink real (?art=<url>) yang membuka dialog detail.
     """
-    col = WARNA_RISIKO.get(r.get("risiko"), "#8ea0c9")
-    judul = html_mod.escape((r.get("title") or "(tanpa judul)")[:max_judul])
-    ringkas = cuplikan(r, max_ringkas)
-    isi = (f'<div class="mi-item" style="border-left-color:{col}">'
-           f'{pills_artikel(r)}'
-           f'<div class="mi-item-title">{judul}</div>')
-    if ringkas:
-        isi += f'<div class="mi-item-sum">{ringkas}</div>'
-    isi += '</div>'
-    return isi
+    from urllib.parse import quote_plus
+
+    ds = (dist or {}).get("sentimen", {})
+    dr = (dist or {}).get("risiko", {})
+    tot_s, tot_r = sum(ds.values()), sum(dr.values())
+    nama = html_mod.escape(display_name)
+    items = []
+    for a in arts:
+        col = WARNA_RISIKO.get(a.get("risiko"), "#8ea0c9")
+        judul = html_mod.escape(a.get("title") or "(tanpa judul)")
+        href = f"?art={quote_plus(a['url'])}#card-{name}"
+        cuplik = cuplikan(a)
+        sum_html = (f'<div class="mi-item-sum">{cuplik}</div>'
+                    if cuplik else "")
+        items.append(
+            f'<div class="mi-item" style="border-left-color:{col}">'
+            f'{pills_artikel(a)}'
+            f'<a class="mi-judul" href="{href}">{judul}</a>'
+            f'{sum_html}</div>')
+    return (
+        f'<div class="mi-card" id="card-{name}">'
+        f'<div class="mi-gridhead">'
+        f'<span style="width:9px;height:9px;border-radius:50%;'
+        f'display:inline-block;background:{color};'
+        f'box-shadow:0 0 8px {color}"></span>'
+        f'<span class="mi-gridname">{nama}</span>'
+        f'<span class="mi-gridcount" style="background:{color}">'
+        f'{len(arts)}</span></div>'
+        f'{bar_agregat("Sentimen", tot_s, [("positif", ds.get("positif", 0), "#34d399"), ("netral", ds.get("netral", 0), "#b6c6f0"), ("negatif", ds.get("negatif", 0), "#fb7185")])}'
+        f'{bar_agregat("Risiko", tot_r, [("Rendah", dr.get("Rendah", 0), "#34d399"), ("Sedang", dr.get("Sedang", 0), "#fbbf24"), ("Tinggi", dr.get("Tinggi", 0), "#fb7185")])}'
+        f'<div class="mi-card-items">{"".join(items)}</div>'
+        f'</div>'
+    )
 
 
 def sorot(teks_escaped: str, keyword: str | None) -> str:
