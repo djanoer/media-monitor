@@ -65,10 +65,16 @@ CREATE TABLE IF NOT EXISTS claims (
 CREATE INDEX IF NOT EXISTS idx_claims_cluster ON claims(cluster_id);
 
 -- Fase B: cluster klaim sejenis (sinyal koroborasi lintas media).
+-- Kolom score/verdict/dst diisi Fase C (verifikasi).
 CREATE TABLE IF NOT EXISTS claim_clusters (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     size INTEGER NOT NULL,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    score REAL,
+    verdict TEXT,
+    tier_breakdown TEXT,
+    headline_flags TEXT,
+    computed_at TEXT
 );
 """
 
@@ -479,7 +485,9 @@ def get_clusters(
         clusters = [
             dict(r)
             for r in conn.execute(
-                "SELECT id, size, created_at FROM claim_clusters ORDER BY size DESC"
+                "SELECT id, size, created_at, score, verdict,"
+                " tier_breakdown, headline_flags, computed_at"
+                " FROM claim_clusters ORDER BY size DESC"
             )
         ]
         for cl in clusters:
@@ -515,3 +523,49 @@ def reset_claims(db_path: str | pathlib.Path) -> tuple[int, int]:
         conn.execute("DELETE FROM claims")
         conn.execute("DELETE FROM claim_clusters")
         return n_klaim, n_cluster
+
+
+_KOLOM_VERIFIKASI = [
+    ("score", "REAL"),
+    ("verdict", "TEXT"),
+    ("tier_breakdown", "TEXT"),
+    ("headline_flags", "TEXT"),
+    ("computed_at", "TEXT"),
+]
+
+
+def migrate_verifikasi(db_path: str | pathlib.Path) -> list[str]:
+    """Tambah kolom verifikasi ke claim_clusters bila belum ada (idempoten).
+
+    Dibutuhkan karena DB yang dibuat sebelum Fase C belum punya kolom ini.
+    Kembalikan daftar kolom yang ditambahkan.
+    """
+    ditambah: list[str] = []
+    with _connect(db_path) as conn:
+        ada = {r[1] for r in conn.execute("PRAGMA table_info(claim_clusters)")}
+        for nama, tipe in _KOLOM_VERIFIKASI:
+            if nama not in ada:
+                # nama & tipe konstanta internal, aman dari injeksi
+                conn.execute(f"ALTER TABLE claim_clusters ADD COLUMN {nama} {tipe}")
+                ditambah.append(nama)
+    return ditambah
+
+
+def save_verifikasi(
+    db_path: str | pathlib.Path, cluster_id: int, hasil: dict
+) -> None:
+    """Simpan hasil verifikasi satu cluster (skor, verdict, flag)."""
+    with _connect(db_path) as conn:
+        conn.execute(
+            "UPDATE claim_clusters SET score = ?, verdict = ?,"
+            " tier_breakdown = ?, headline_flags = ?, computed_at = ?"
+            " WHERE id = ?",
+            (
+                hasil.get("score"),
+                hasil.get("verdict"),
+                hasil.get("tier_breakdown"),
+                hasil.get("headline_flags"),
+                _utcnow(),
+                cluster_id,
+            ),
+        )

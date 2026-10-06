@@ -3,60 +3,70 @@
 media:
   - name: tempo
     display: Tempo
+    tier: 1  # kredibilitas sumber (Fase C; perlu validasi Bor)
     color: "#FF6B6B"
     feed: "https://rss.tempo.co/"
     type: native
     active: true
   - name: cnn_indonesia
     display: CNN Indonesia
+    tier: 1  # kredibilitas sumber (Fase C; perlu validasi Bor)
     color: "#FFA94D"
     feed: "https://www.cnnindonesia.com/rss"
     type: native
     active: true
   - name: antara
     display: Antara
+    tier: 1  # kredibilitas sumber (Fase C; perlu validasi Bor)
     color: "#FFD43B"
     feed: "https://www.antaranews.com/rss/terkini.xml"
     type: native
     active: true
   - name: republika
     display: Republika
+    tier: 1  # kredibilitas sumber (Fase C; perlu validasi Bor)
     color: "#69DB7C"
     feed: "https://news.google.com/rss/search?q=site:republika.co.id&hl=id&gl=ID&ceid=ID:id"
     type: gnews
     active: true
   - name: bisnis_indonesia
     display: Bisnis Indonesia
+    tier: 1  # kredibilitas sumber (Fase C; perlu validasi Bor)
     color: "#4DABF7"
     feed: "https://rss.bisnis.com"
     type: native
     active: true
   - name: kompas
     display: Kompas
+    tier: 1  # kredibilitas sumber (Fase C; perlu validasi Bor)
     color: "#9775FA"
     feed: "https://news.google.com/rss/search?q=site:kompas.com&hl=id&gl=ID&ceid=ID:id"
     type: gnews
     active: true
   - name: detik
     display: Detik
+    tier: 1  # kredibilitas sumber (Fase C; perlu validasi Bor)
     color: "#3BC9DB"
     feed: "https://news.google.com/rss/search?q=site:detik.com&hl=id&gl=ID&ceid=ID:id"
     type: gnews
     active: true
   - name: liputan6
     display: Liputan6
+    tier: 1  # kredibilitas sumber (Fase C; perlu validasi Bor)
     color: "#F783AC"
     feed: "https://news.google.com/rss/search?q=site:liputan6.com&hl=id&gl=ID&ceid=ID:id"
     type: gnews
     active: true
   - name: jawa_pos
     display: Jawa Pos
+    tier: 1  # kredibilitas sumber (Fase C; perlu validasi Bor)
     color: "#20C997"
     feed: "https://news.google.com/rss/search?q=site:jawapos.com&hl=id&gl=ID&ceid=ID:id"
     type: gnews
     active: true
   - name: kumparan
     display: Kumparan
+    tier: 2  # kredibilitas sumber (Fase C; perlu validasi Bor)
     color: "#A9E34B"
     feed: "https://news.google.com/rss/search?q=site:kumparan.com&hl=id&gl=ID&ceid=ID:id"
     type: gnews

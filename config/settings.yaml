@@ -19,9 +19,28 @@ clustering:
 
 # Verifikasi klaim (Fase B): ekstraksi klaim + dedup semantik.
 verification:
-  similarity_threshold: 0.90  # cosine >= ini -> satu cluster klaim
+  # 0.95 terkalibrasi 6 Okt 2026 pada 11 headline karhutla:
+  # duplikat sejati (Kompas vs Detik soal BPGMN) menyatu, sisanya memisah
+  # dengan benar. 0.90 terlalu longgar (9 klaim jadi 1 cluster).
+  similarity_threshold: 0.95  # cosine >= ini -> satu cluster klaim
   claim_max_sentences: 3      # kalimat kunci maks per artikel (selain judul)
   claim_min_length: 20        # kalimat lebih pendek dari ini diabaikan
+  # Koroborasi (Fase C): skor = min(100, 100 * total_bobot_media_unik / 2.0).
+  # 2.0 = dua sumber Tier 1 -> skor 100 ("terkoroborasi").
+  tier_weights: {1: 1.0, 2: 0.7, 3: 0.4}  # perlu validasi Bor
+  ambang_terkoroborasi: 80
+  ambang_satu_sumber: 50
+  # headline bombastis -> flag bila mengandung salah satu penanda ini
+  penanda_bombastis:
+    - darurat
+    - gempar
+    - heboh
+    - viral
+    - mengejutkan
+    - skandal
+    - terbongkar
+    - ngeri
+    - "!"
 
 storage:
   db_path: "data/media_monitor.db"

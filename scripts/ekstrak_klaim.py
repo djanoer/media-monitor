@@ -65,6 +65,7 @@ def main() -> int:
     model_name = settings["clustering"]["embedding_model"]
 
     repository.init_db(db_path)
+    repository.migrate_verifikasi(db_path)  # DB lama: tambah kolom Fase C
     if args.reset:
         n_klaim, n_cluster = repository.reset_claims(db_path)
         print(f"RESET: {n_klaim} klaim + {n_cluster} cluster dihapus.")
