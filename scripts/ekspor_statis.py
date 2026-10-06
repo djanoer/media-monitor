@@ -3,10 +3,10 @@
 Jalankan dari root proyek (venv aktif):
     python scripts/ekspor_statis.py [--out docs/index.html]
 
-Membaca DB lokal lalu me-render SATU file HTML mandiri (tanpa JS, tanpa
-dependensi eksternal): grid 15 media + KPI + Respons Publik per topik.
-Alur publikasi: jalankan script -> commit docs/ -> push -> GitHub Pages
-(source: main, folder /docs) otomatis menayangkan.
+Membaca DB lokal lalu me-render SATU file HTML mandiri (tanpa dependensi
+eksternal): hero + KPI + pil media + bar distribusi + grid berita per media
++ Respons Publik per topik. Alur publikasi: jalankan script -> commit docs/
+-> push -> GitHub Pages (source: main, folder /docs) otomatis menayangkan.
 
 Aman diulang-ulang (idempoten): output selalu ditulis ulang penuh.
 """
@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import argparse
 import html as html_mod
-import json
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -26,10 +25,13 @@ from src.common.config import load_media, load_settings
 from src.common.text import bersihkan_html
 from src.storage import repository
 
-WIB = timezone(timedelta(hours=7))
-WARNA_RISIKO = {"Rendah": "#40c057", "Sedang": "#fab005", "Tinggi": "#fa5252"}
-WARNA_SENTIMEN = {"positif": "#40c057", "netral": "#8ea0c9",
-                  "negatif": "#fa5252"}
+WITA = timezone(timedelta(hours=8))
+UTC = timezone.utc
+WARNA_RISIKO = {"Rendah": "#34d399", "Sedang": "#fbbf24", "Tinggi": "#f87171"}
+WARNA_SENTIMEN = {"positif": "#34d399", "netral": "#9aa5c4",
+                  "negatif": "#f87171"}
+BULAN_ID = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+            "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
 DISCLAIMER = ("Disclaimer: Tidak 100% valid, ini hanya berupa ringkasan "
               "otomatis. Gunakan informasi ini dengan bijak. Algoritma "
               "berdasarkan rumus yang saya buat, dan belum tentu valid.")
@@ -39,15 +41,45 @@ def _esc(s) -> str:
     return html_mod.escape(str(s or ""))
 
 
+def _ribu(n) -> str:
+    return f"{int(n or 0):,}".replace(",", ".")
+
+
+def _tgl_id(dt: datetime) -> str:
+    return (f"{dt.day} {BULAN_ID[dt.month - 1]} {dt.year}, "
+            f"{dt.strftime('%H:%M')} WITA")
+
+
+def _rel_id(ms: float) -> str:
+    m = int(ms // 60000)
+    if m < 1:
+        return "baru saja"
+    if m < 60:
+        return f"{m} mnt lalu"
+    h = m // 60
+    if h < 24:
+        return f"{h} jam lalu"
+    return f"{h // 24} hari lalu"
+
+
 def _ringkas(teks: str | None, n: int = 140) -> str:
     t = bersihkan_html(teks or "")
     return t if len(t) <= n else t[:n].rsplit(" ", 1)[0] + "…"
 
 
+def _bar(segs: list[tuple[int, str]], cls: str = "mbar") -> str:
+    """Stacked bar horizontal dari [(nilai, warna)]."""
+    tot = sum(v for v, _ in segs) or 1
+    divs = "".join(
+        f'<div style="width:{v / tot * 100:.1f}%;background:{w}"></div>'
+        for v, w in segs if v > 0)
+    return f'<div class="{cls}">{divs}</div>'
+
+
 def _badge_risiko(risiko, skor) -> str:
     if skor is None:
         return '<span class="bd b-abu">Risiko: belum dianalisa</span>'
-    w = WARNA_RISIKO.get(risiko, "#8ea0c9")
+    w = WARNA_RISIKO.get(risiko, "#9aa5c4")
     return (f'<span class="bd" style="background:{w}22;color:{w};'
             f'border:1px solid {w}55">Risiko: {_esc(risiko)} - '
             f'{skor:g}</span>')
@@ -56,7 +88,7 @@ def _badge_risiko(risiko, skor) -> str:
 def _badge_sentimen(sentimen) -> str:
     if not sentimen:
         return '<span class="bd b-abu">Sentimen: belum dianalisa</span>'
-    w = WARNA_SENTIMEN.get(sentimen, "#8ea0c9")
+    w = WARNA_SENTIMEN.get(sentimen, "#9aa5c4")
     return (f'<span class="bd" style="background:{w}22;color:{w};'
             f'border:1px solid {w}55">Sentimen: {_esc(sentimen).capitalize()}'
             f'</span>')
@@ -86,11 +118,47 @@ def _sparkline(harian: list[dict], w: int = 280, h: int = 56) -> str:
     )
 
 
+def _metrik(db_path, media_list: list[dict]) -> dict:
+    """Kumpulkan semua angka hero/KPI dari DB (testable)."""
+    repository.init_db(db_path)
+    total = sum(repository.count_by_media(db_path).values())
+    status = repository.get_media_last_status(db_path)
+    ok = sum(1 for m in media_list
+             if status.get(m["name"], {}).get("status") == "ok")
+    sejak = (datetime.now(UTC) - timedelta(hours=24)).isoformat()
+    d24 = repository.count_articles_since(db_path, sejak)
+    dist_s = repository.distribusi_sentimen(db_path)
+    ps, nt, ng = (dist_s.get("positif", 0), dist_s.get("netral", 0),
+                  dist_s.get("negatif", 0))
+    avg_s = round((ps - ng) / total * 100) if total else 0
+    dist_r = repository.distribusi_risiko(db_path)
+    rr, rs, rt = (dist_r.get("Rendah", 0), dist_r.get("Sedang", 0),
+                  dist_r.get("Tinggi", 0))
+    avg_r = repository.rata_risiko(db_path)
+    last = repository.get_last_run(db_path)
+    umur_ms, sehat = None, "unknown"
+    if last and last.get("finished_at"):
+        fin = datetime.fromisoformat(last["finished_at"])
+        if fin.tzinfo is None:
+            fin = fin.replace(tzinfo=UTC)
+        umur_ms = (datetime.now(UTC) - fin).total_seconds() * 1000
+        sehat = ("ok" if umur_ms <= 2 * 3600 * 1000
+                 else "waspada" if umur_ms <= 24 * 3600 * 1000
+                 else "mati")
+    return {
+        "total": total, "ok": ok, "n_media": len(media_list), "d24": d24,
+        "ps": ps, "nt": nt, "ng": ng, "avg_s": avg_s,
+        "rr": rr, "rs": rs, "rt": rt, "avg_r": avg_r,
+        "umur_ms": umur_ms, "sehat": sehat,
+        "status": status,
+    }
+
+
 def _kartu_media(m: dict, arts: list[dict]) -> str:
     items = []
     for a in arts:
-        wr = WARNA_RISIKO.get(a.get("risiko"), "#1f2937") \
-            if a.get("risiko_skor") is not None else "#1f2937"
+        wr = WARNA_RISIKO.get(a.get("risiko"), "#2a3352") \
+            if a.get("risiko_skor") is not None else "#2a3352"
         items.append(
             f'<div class="item" style="border-left:3px solid {wr}">'
             f'<a class="t" href="{_esc(a["url"])}" target="_blank" '
@@ -144,9 +212,9 @@ def _seksi_topik(db_path, topik: str) -> str:
         f'<section class="topik" id="t-{_esc(topik)}">'
         f'<h3>{_esc(topik)}</h3>'
         f'<div class="kpis">'
-        f'<div class="kpi"><div class="v">{tot_v:,}</div>'
+        f'<div class="kpi"><div class="v">{_ribu(tot_v)}</div>'
         f'<div class="l">views YouTube</div></div>'
-        f'<div class="kpi"><div class="v">{tot_k:,}</div>'
+        f'<div class="kpi"><div class="v">{_ribu(tot_k)}</div>'
         f'<div class="l">komentar</div></div>'
         f'<div class="kpi"><div class="v">{len(videos)}</div>'
         f'<div class="l">video teratas</div></div>'
@@ -161,31 +229,48 @@ def _seksi_topik(db_path, topik: str) -> str:
 
 CSS = """
 *{box-sizing:border-box}
-body{background:#0a0e1a;color:#e6ebf5;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;margin:0;padding:0 16px 40px}
+body{background:#0a0f1e;color:#e6ebf5;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;margin:0;padding:0 20px 48px}
 .wrap{max-width:1280px;margin:0 auto}
-.hero{padding:28px 4px 8px;display:flex;justify-content:space-between;align-items:end;flex-wrap:wrap;gap:8px}
-.hero h1{margin:0;font-size:2rem;background:linear-gradient(90deg,#e6ebf5,#7dd3fc);-webkit-background-clip:text;background-clip:text;color:transparent}
-.hero .tag{color:#8ea0c9;letter-spacing:2px;font-size:.75rem}
-.hero .upd{color:#9ca3af;font-size:.85rem;background:#111827;border:1px solid #1f2937;border-radius:20px;padding:4px 12px;display:flex;align-items:center}
-.livedot{width:9px;height:9px;border-radius:50%;background:#40c057;display:inline-block;margin-right:8px;animation:pulse 2s infinite;flex:none}
-.livedot.stale{background:#fab005;animation:none}
-.livedot.old{background:#6b7280;animation:none}
-@keyframes pulse{0%{box-shadow:0 0 0 0 #40c05766}70%{box-shadow:0 0 0 8px transparent}100%{box-shadow:0 0 0 0 transparent}}
-.topnav{position:sticky;top:0;z-index:10;background:#0a0e1ae6;backdrop-filter:blur(8px);padding:10px 4px;display:flex;gap:18px;border-bottom:1px solid #1f2937}
+.hero{padding:32px 4px 20px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px}
+.hero h1{margin:2px 0 6px;font-size:2.4rem;font-weight:800;display:flex;align-items:center;gap:14px}
+.hero .tag{color:#8ea0c9;letter-spacing:3px;font-size:.75rem}
+.hright{text-align:right}
+.hright .dlab{color:#8ea0c9;letter-spacing:3px;font-size:.7rem}
+.hright .dval{font-size:1.05rem;font-weight:700;margin:2px 0}
+.hright .dval .relt{color:#9ca3af;font-weight:400;font-size:.85rem}
+.sched{font-size:.85rem;color:#9ca3af;display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.sdot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.pulse{animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 #34d39966}70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:4px 0 18px}
+@media(max-width:800px){.kpis{grid-template-columns:1fr}}
+.kpi{background:#131a30;border:1px solid #1e2745;border-radius:16px;padding:20px 22px}
+.kpi .v{font-size:2.2rem;font-weight:800}
+.kpi .v .per{font-size:1.1rem;color:#8ea0c9;font-weight:600}
+.kpi .l{font-size:.72rem;color:#8ea0c9;letter-spacing:2px;margin:2px 0 8px}
+.kpi .s{font-size:.85rem;color:#c6d2e8;margin-bottom:10px}
+.kpi .s b{color:#e6ebf5}
+.mbar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:#232c4d}
+.mbar div{height:100%}
+.pills{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 22px}
+.pill{display:flex;align-items:center;gap:8px;border:1px solid #2a3352;border-radius:20px;padding:7px 14px;font-size:.85rem;color:#c6d2e8;background:#0d1326}
+.pill i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.dist{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px}
+@media(max-width:800px){.dist{grid-template-columns:1fr}}
+.dhead{font-size:.72rem;color:#8ea0c9;letter-spacing:2px;margin-bottom:8px}
+.legend{display:flex;gap:16px;font-size:.82rem;color:#c6d2e8;margin-bottom:8px;flex-wrap:wrap}
+.legend i{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.dbar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:#232c4d}
+.dbar div{height:100%}
+h2.sec{margin:30px 0 14px;font-size:1.15rem;display:flex;align-items:center;gap:10px}
+h2.sec::before{content:"";width:4px;height:1.2em;background:linear-gradient(#4dabf7,#9775fa);border-radius:2px}
+.topnav{position:sticky;top:0;z-index:10;background:#0a0f1ee6;backdrop-filter:blur(8px);padding:10px 4px;display:flex;gap:18px;border-bottom:1px solid #1e2745;margin:0 -20px;padding-left:24px}
 .topnav a{color:#9ca3af;text-decoration:none;font-size:.85rem;font-weight:600}
 .topnav a:hover{color:#7dd3fc}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:16px 0}
-.kpi{background:#111827;border:1px solid #1f2937;border-radius:10px;padding:12px 16px}
-.kpi .v{font-size:1.5rem;font-weight:700}
-.kpi .l{font-size:.75rem;color:#9ca3af}
-.mbar{display:flex;height:6px;border-radius:3px;overflow:hidden;margin-top:8px;background:#1f2937}
-.mbar div{height:100%}
-h2.sec{margin:28px 0 12px;padding-bottom:8px;border-bottom:1px solid #1f2937;display:flex;align-items:center;gap:10px}
-h2.sec::before{content:"";width:4px;height:1.2em;background:linear-gradient(#4dabf7,#9775fa);border-radius:2px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
-.card{background:#0d1526;border:1px solid #1f2937;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;transition:transform .15s ease,border-color .15s ease}
-.card:hover{transform:translateY(-3px);border-color:#2f3b52}
-.card header{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #1f2937}
+.card{background:#0d1326;border:1px solid #1e2745;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;transition:transform .15s ease,border-color .15s ease}
+.card:hover{transform:translateY(-3px);border-color:#33406b}
+.card header{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #1e2745}
 .dot{width:10px;height:10px;border-radius:50%}
 .cnt{margin-left:auto;color:#9ca3af;font-size:.75rem}
 .items{max-height:380px;overflow-y:auto;padding:6px 12px}
@@ -198,65 +283,98 @@ h2.sec::before{content:"";width:4px;height:1.2em;background:linear-gradient(#4da
 .bd{font-size:.7rem;padding:2px 8px;border-radius:20px}
 .b-abu{background:#1f2937;color:#9ca3af;border:1px solid #374151}
 .muted{color:#6b7280;font-size:.8rem}
-.topik{background:#0d1526;border:1px solid #1f2937;border-radius:12px;padding:18px;margin-bottom:16px}
+.topik{background:#0d1326;border:1px solid #1e2745;border-radius:14px;padding:18px;margin-bottom:16px}
 .topik h3{margin:0 0 4px;font-size:1.3rem;text-transform:capitalize}
 .topik .cols{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:8px}
 @media(max-width:800px){.topik .cols{grid-template-columns:1fr}}
 .topik h4{margin:12px 0 6px;color:#9ca3af;font-size:.85rem}
+.topik .kpis{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.topik .kpi{padding:12px 16px}
+.topik .kpi .v{font-size:1.5rem}
 .bar{display:flex;align-items:center;gap:8px;font-size:.8rem;margin:4px 0}
 .bar span{width:130px;color:#c6d2e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bar .track{flex:1;background:#1f2937;border-radius:4px;height:8px}
+.bar .track{flex:1;background:#232c4d;border-radius:4px;height:8px}
 .bar .fill{background:#4dabf7;border-radius:4px;height:8px}
 .bar b{width:36px;text-align:right}
 ul{margin:4px 0;padding-left:18px;font-size:.85rem;color:#c6d2e8}
-footer{margin-top:32px;padding-top:16px;border-top:1px solid #1f2937;color:#6b7280;font-size:.8rem;text-align:center}
+footer{margin-top:36px;padding-top:16px;border-top:1px solid #1e2745;color:#6b7280;font-size:.8rem;text-align:center}
 a{color:#7dd3fc}
 """
 
 
-def _kpi(nilai, label) -> str:
-    return (f'<div class="kpi"><div class="v">{nilai}</div>'
-            f'<div class="l">{label}</div></div>')
+def _tanda_persen(v: int) -> str:
+    if v > 0:
+        return f"+{v}%"
+    if v < 0:
+        return f"−{abs(v)}%"
+    return "0%"
 
 
 def ekspor(db_path, out_path: Path, settings: dict,
            media_list: list[dict]) -> dict:
     """Render docs/index.html dari DB. Kembalikan statistik."""
-    repository.init_db(db_path)
+    m = _metrik(db_path, media_list)
     per_media = repository.get_artikel_per_media(db_path, limit_per_media=8)
-    dist_s = repository.distribusi_sentimen(db_path)
-    dist_r = repository.distribusi_risiko(db_path)
-    total = sum(repository.count_by_media(db_path).values())
-    status = repository.get_media_last_status(db_path)
-    ok = sum(1 for m in media_list
-             if status.get(m["name"], {}).get("status") == "ok")
     topiks = repository.daftar_topik_respon(db_path)
 
-    now = datetime.now(WIB).strftime("%d %b %Y %H:%M WIB")
-    now_iso = datetime.now(WIB).isoformat()
-    # Kartu sentimen berwarna: hijau/abu/merah + mini-bar proporsi
-    ps, nt, ng = (dist_s.get("positif", 0), dist_s.get("netral", 0),
-                  dist_s.get("negatif", 0))
-    tot_s = ps + nt + ng or 1
-    bar_s = "".join(
-        f'<div style="width:{v/tot_s*100:.1f}%;background:{w}"></div>'
-        for v, w in ((ps, "#40c057"), (nt, "#8ea0c9"), (ng, "#fa5252")) if v)
-    kpi_sentimen = (
-        f'<div class="kpi"><div class="v">'
-        f'<span style="color:#40c057">{ps}</span><span class="muted">/</span>'
-        f'<span style="color:#8ea0c9">{nt}</span><span class="muted">/</span>'
-        f'<span style="color:#fa5252">{ng}</span></div>'
-        f'<div class="l">sentimen +/n/−</div>'
-        f'<div class="mbar">{bar_s}</div></div>')
-    kpis = "".join([
-        _kpi(f"{total:,}".replace(",", "."), "total artikel"),
-        _kpi(f"{ok}/{len(media_list)}", "media OK"),
-        kpi_sentimen,
-        _kpi(f"{repository.rata_risiko(db_path):g}/100", "risiko rata-rata"),
-    ])
+    now = datetime.now(WITA)
+    now_iso = now.isoformat()
+
+    # Kesehatan scheduler
+    sehat_cfg = {"ok": ("#34d399", "Scheduler sehat", True),
+                 "waspada": ("#fbbf24", "Siklus terakhir", False),
+                 "mati": ("#6b7280", "Scheduler tidak aktif", False),
+                 "unknown": ("#6b7280", "Belum ada siklus tercatat", False)}
+    w_sch, teks_sch, pulse = sehat_cfg[m["sehat"]]
+    rel_sch = (f" · {_rel_id(m['umur_ms'])}" if m["umur_ms"] is not None
+               else "")
+
+    kpi1 = (
+        f'<div class="kpi"><div class="v">{_ribu(m["total"])}</div>'
+        f'<div class="l">TOTAL ARTIKEL</div>'
+        f'<div class="s"><b>{m["ok"]}/{m["n_media"]}</b> media OK · '
+        f'<b>{_ribu(m["d24"])}</b> dalam 24 jam</div></div>')
+    kpi2 = (
+        f'<div class="kpi"><div class="v">{_tanda_persen(m["avg_s"])}</div>'
+        f'<div class="l">SENTIMEN RATA-RATA</div>'
+        f'<div class="s">P {_ribu(m["ps"])} · N {_ribu(m["nt"])} · '
+        f'Ng {_ribu(m["ng"])}</div>'
+        f'{_bar([(m["ps"], WARNA_SENTIMEN["positif"]), (m["nt"], WARNA_SENTIMEN["netral"]), (m["ng"], WARNA_SENTIMEN["negatif"])])}</div>')
+    kpi3 = (
+        f'<div class="kpi"><div class="v">{m["avg_r"]:g}<span class="per">/100</span></div>'
+        f'<div class="l">RISIKO RATA-RATA</div>'
+        f'<div class="s">R {_ribu(m["rr"])} · S {_ribu(m["rs"])} · '
+        f'T {_ribu(m["rt"])}</div>'
+        f'{_bar([(m["rr"], WARNA_RISIKO["Rendah"]), (m["rs"], WARNA_RISIKO["Sedang"]), (m["rt"], WARNA_RISIKO["Tinggi"])])}</div>')
+
+    pills = "".join(
+        f'<span class="pill"><i style="background:'
+        f'{"#34d399" if m["status"].get(x["name"], {}).get("status") == "ok" else "#6b7280"}'
+        f'"></i>{_esc(x["display"])}</span>'
+        for x in media_list)
+
+    dist = (
+        f'<div class="dist"><div>'
+        f'<div class="dhead">SENTIMEN · {_ribu(m["total"])} BERITA</div>'
+        f'<div class="legend">'
+        f'<span><i style="background:{WARNA_SENTIMEN["positif"]}"></i>positif {_ribu(m["ps"])}</span>'
+        f'<span><i style="background:{WARNA_SENTIMEN["netral"]}"></i>netral {_ribu(m["nt"])}</span>'
+        f'<span><i style="background:{WARNA_SENTIMEN["negatif"]}"></i>negatif {_ribu(m["ng"])}</span>'
+        f'</div>'
+        f'{_bar([(m["ps"], WARNA_SENTIMEN["positif"]), (m["nt"], WARNA_SENTIMEN["netral"]), (m["ng"], WARNA_SENTIMEN["negatif"])], cls="dbar")}'
+        f'</div><div>'
+        f'<div class="dhead">RISIKO · {_ribu(m["total"])} BERITA</div>'
+        f'<div class="legend">'
+        f'<span><i style="background:{WARNA_RISIKO["Rendah"]}"></i>Rendah {_ribu(m["rr"])}</span>'
+        f'<span><i style="background:{WARNA_RISIKO["Sedang"]}"></i>Sedang {_ribu(m["rs"])}</span>'
+        f'<span><i style="background:{WARNA_RISIKO["Tinggi"]}"></i>Tinggi {_ribu(m["rt"])}</span>'
+        f'</div>'
+        f'{_bar([(m["rr"], WARNA_RISIKO["Rendah"]), (m["rs"], WARNA_RISIKO["Sedang"]), (m["rt"], WARNA_RISIKO["Tinggi"])], cls="dbar")}'
+        f'</div></div>')
+
     cards = "".join(
-        _kartu_media(m, per_media.get(m["name"], []))
-        for m in media_list
+        _kartu_media(x, per_media.get(x["name"], []))
+        for x in media_list
     )
     seksis = "".join(_seksi_topik(db_path, t) for t in topiks)
 
@@ -270,11 +388,17 @@ def ekspor(db_path, out_path: Path, settings: dict,
 </head>
 <body><div class="wrap">
 <div class="hero">
-<div><div class="tag">PANTAU MEDIA · SENTIMEN & RISIKO</div><h1>Media Monitor</h1></div>
-<div class="upd" data-ts="{now_iso}"><span class="livedot"></span><span class="upd-text">Diperbarui: {now}</span></div>
+<div><h1><span class="sdot pulse" style="background:#34d399;width:16px;height:16px"></span>Media Monitor</h1><div class="tag">PANTAU MEDIA · SENTIMEN & RISIKO</div></div>
+<div class="hright">
+<div class="dlab">DIPERBARUI</div>
+<div class="dval" data-ts="{now_iso}"><span class="t">{_tgl_id(now)}</span> <span class="relt"></span></div>
+<div class="sched"><span class="sdot{' pulse' if pulse else ''}" style="background:{w_sch}"></span><span>{teks_sch}{rel_sch}</span></div>
 </div>
+</div>
+<div class="kpis">{kpi1}{kpi2}{kpi3}</div>
+<div class="pills">{pills}</div>
+{dist}
 <nav class="topnav"><a href="#berita">📰 Berita per media</a><a href="#respons">📊 Respons Publik</a></nav>
-<div class="kpis">{kpis}</div>
 <h2 class="sec" id="berita">Berita per media</h2>
 <div class="grid">{cards}</div>
 <h2 class="sec" id="respons">Respons Publik</h2>
@@ -283,17 +407,16 @@ def ekspor(db_path, out_path: Path, settings: dict,
 </div>
 <script>
 (function(){{
-var el=document.querySelector('.upd');if(!el||!el.dataset.ts)return;
+document.querySelectorAll('[data-ts]').forEach(function(el){{
 var ts=new Date(el.dataset.ts).getTime();
-var dot=el.querySelector('.livedot'),txt=el.querySelector('.upd-text');
-var abs=txt.textContent;
+function tick(){{var age=Date.now()-ts;
+var r=el.querySelector('.relt');if(!r)return;
+r.textContent='('+rel(age)+')';}}
 function rel(ms){{var m=Math.floor(ms/60000);if(m<1)return'baru saja';
 if(m<60)return m+' mnt lalu';var h=Math.floor(m/60);
 if(h<24)return h+' jam lalu';return Math.floor(h/24)+' hari lalu';}}
-function tick(){{var age=Date.now()-ts;
-txt.textContent=abs+' ('+rel(age)+')';
-dot.className='livedot'+(age>864e5?' old':age>108e5?' stale':'');}}
 tick();setInterval(tick,60000);
+}});
 }})();
 </script>
 </body></html>

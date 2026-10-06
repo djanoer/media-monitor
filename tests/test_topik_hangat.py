@@ -315,4 +315,4 @@ def test_ekspor_statis_html(tmp_path):
     assert "Kompas" in html and "Judul berita" in html
     assert "<b>penting</b>" not in html  # di-escape
     assert "banjir" in html and "Video banjir" in html
-    assert "WIB" in html and "Disclaimer" in html
+    assert "WITA" in html and "Disclaimer" in html
