@@ -93,7 +93,8 @@ div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"]:hove
    ditulis setelah aturan kartu utama sehingga menang. */
 div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"] {
   background:rgba(255,255,255,.025);
-  border:1px solid transparent; border-left:3px solid #8ea0c9;
+  border:none !important;
+  border-left:3px solid #8ea0c9 !important;
   border-radius:9px; padding:7px 8px; margin:0 0 6px; transition:.15s;}
 div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"]:hover {
   background:rgba(255,255,255,.06); transform:translateY(-1px);}
@@ -101,14 +102,16 @@ div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[
 .mi-meta {display:flex; align-items:center; gap:4px; flex-wrap:wrap;
   margin-bottom:3px;}
 .mi-time {font-size:9.5px; color:#8ea0c9; letter-spacing:.4px;}
+.mi-meta > div {display:inline-flex; gap:4px;}
+.mi-meta .mi-badge-sm {margin-left:0;}
 /* garis kiri kartu artikel ikut level risiko (penanda .mi-risk di dalam) */
 .mi-risk {display:none;}
 div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"]:has(.mi-risk[data-r="Tinggi"]) {
-  border-left:3px solid #fb7185;}
+  border-left:3px solid #fb7185 !important;}
 div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"]:has(.mi-risk[data-r="Sedang"]) {
-  border-left:3px solid #fbbf24;}
+  border-left:3px solid #fbbf24 !important;}
 div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"]:has(.mi-risk[data-r="Rendah"]) {
-  border-left:3px solid #34d399;}
+  border-left:3px solid #34d399 !important;}
 /* header kartu minimalis: nama + pil count + 2 baris bar mini */
 .mi-hdr {margin-bottom:8px;}
 .mi-hdr-top {display:flex; align-items:center; gap:8px; padding:2px 2px 8px;}
