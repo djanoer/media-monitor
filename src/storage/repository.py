@@ -220,8 +220,17 @@ def insert_articles(db_path: str | pathlib.Path, articles: list[dict]) -> int:
 
 
 def start_run(db_path: str | pathlib.Path) -> int:
-    """Catat awal siklus fetch, kembalikan run_id."""
+    """Catat awal siklus fetch, kembalikan run_id.
+
+    Sekaligus tutup siklus lama yang tak pernah selesai (laptop mati
+    mendadak): datanya tetap konsisten karena tulis DB per transaksi.
+    """
     with _connect(db_path) as conn:
+        conn.execute(
+            "UPDATE fetch_runs SET finished_at = ?"
+            " WHERE finished_at IS NULL",
+            (_utcnow(),),
+        )
         cur = conn.execute(
             "INSERT INTO fetch_runs (started_at) VALUES (?)", (_utcnow(),)
         )

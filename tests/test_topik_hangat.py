@@ -201,3 +201,89 @@ def test_lock_basi_diambil_alih(tmp_path, monkeypatch):
     (tmp_path / "uji2.lock").write_text(str(p.pid))
     assert lk.minta("uji2") is True  # kunci basi -> ambil alih
     lk.lepas()
+
+
+def _db_analisa(tmp_path):
+    import sys
+    sys.path.insert(0, ".")
+    from src.storage import repository
+    db = str(tmp_path / "a.db")
+    repository.init_db(db)
+    repository.insert_articles(db, [
+        {"url": "u1", "media": "kompas",
+         "title": "Bencana banjir bandang melanda, warga mengungsi",
+         "summary": "banjir besar merendam puluhan rumah",
+         "published_at": "2026-10-06T10:00:00",
+         "fetched_at": "2026-10-06T10:05:00"},
+        {"url": "u2", "media": "detik",
+         "title": "Festival meriah sukses besar, pengunjung senang",
+         "summary": "acara berjalan lancar dan menggembirakan",
+         "published_at": "2026-10-06T11:00:00",
+         "fetched_at": "2026-10-06T11:05:00"},
+    ])
+    return db
+
+
+def test_siklus_analisa_idempoten(tmp_path):
+    import sys
+    sys.path.insert(0, ".")
+    from src.processing.analisa import siklus_analisa
+    from src.storage import repository
+    db = _db_analisa(tmp_path)
+    settings = {"analisa": {}, "verification": {"penanda_bombastis": []}}
+    h1 = siklus_analisa(db, settings)
+    assert h1["n"] == 2
+    assert sum(h1["sentimen"].values()) == 2
+    arts = repository.get_artikel_keyword(db, "banjir")
+    assert arts[0]["sentimen"] == "negatif"
+    assert arts[0]["risiko"] in ("Rendah", "Sedang", "Tinggi")
+    h2 = siklus_analisa(db, settings)   # tanpa force -> tak ada yang baru
+    assert h2["n"] == 0
+    h3 = siklus_analisa(db, settings, force=True)
+    assert h3["n"] == 2
+
+
+def test_fetch_cycle_hook_analisa(tmp_path, monkeypatch):
+    import sys
+    import types
+    sys.path.insert(0, ".")
+    # jobs.py butuh apscheduler (ada di laptop, tak ada di VM test)
+    fake_sched = types.ModuleType("apscheduler.schedulers.blocking")
+    fake_sched.BlockingScheduler = object
+    fake_pkg = types.ModuleType("apscheduler.schedulers")
+    fake_root = types.ModuleType("apscheduler")
+    monkeypatch.setitem(sys.modules, "apscheduler", fake_root)
+    monkeypatch.setitem(sys.modules, "apscheduler.schedulers", fake_pkg)
+    monkeypatch.setitem(sys.modules,
+                        "apscheduler.schedulers.blocking", fake_sched)
+    from src.scheduler.jobs import fetch_cycle
+    from src.storage import repository
+    db = _db_analisa(tmp_path)
+    settings = {
+        "storage": {"db_path": db},
+        "fetch": {"delay_between_media_seconds": 0, "timeout_seconds": 5},
+        "unduh_isi": {"aktif": False},
+        "analisa": {"otomatis": True, "limit_per_siklus": 500},
+        "verification": {"penanda_bombastis": []},
+    }
+    summary = fetch_cycle(settings, media_list=[])
+    assert summary == {}
+    arts = repository.get_artikel_keyword(db, "banjir")
+    assert arts[0]["sentimen"] is not None  # hook analisa jalan
+
+
+def test_start_run_tutup_siklus_terputus(tmp_path):
+    import sys
+    sys.path.insert(0, ".")
+    from src.storage import repository
+    db = str(tmp_path / "r.db")
+    repository.init_db(db)
+    rid = repository.start_run(db)          # simulasi siklus terputus
+    assert repository.get_last_run(db)["finished_at"] is None
+    rid2 = repository.start_run(db)         # start baru -> tutup yang lama
+    assert rid2 != rid
+    assert repository.get_last_run(db)["finished_at"] is None  # yg baru
+    import sqlite3
+    n_terbuka = sqlite3.connect(db).execute(
+        "SELECT COUNT(*) FROM fetch_runs WHERE finished_at IS NULL").fetchone()[0]
+    assert n_terbuka == 1  # hanya siklus berjalan yang terbuka

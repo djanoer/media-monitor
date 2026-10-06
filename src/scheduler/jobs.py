@@ -16,6 +16,7 @@ from src.common.config import load_media, load_settings
 from src.common.http_client import HttpClient
 from src.ingestion.artikel import siklus_unduh_isi
 from src.ingestion.fetcher import fetch_media
+from src.processing.analisa import siklus_analisa
 from src.storage import repository
 
 log = logging.getLogger("media_monitor")
@@ -85,6 +86,20 @@ def fetch_cycle(
             )
     except Exception as exc:
         log.warning("unduh isi artikel gagal: %s", exc)
+    # Analisa sentimen + risiko otomatis (Fase F -> full otomatis).
+    # Komputasi lokal murni (tanpa API/kuota); best-effort seperti unduh isi.
+    try:
+        cfg_analisa = settings.get("analisa", {})
+        if cfg_analisa.get("otomatis", True):
+            hasil = siklus_analisa(
+                db_path, settings,
+                limit=int(cfg_analisa.get("limit_per_siklus", 500)),
+            )
+            if hasil["n"]:
+                log.info("analisa otomatis: %d artikel, risiko=%s",
+                         hasil["n"], hasil["risiko"])
+    except Exception as exc:
+        log.warning("analisa otomatis gagal: %s", exc)
     return summary
 
 

@@ -60,6 +60,8 @@ respon_publik:
 
 # Analisa sentimen + risiko per artikel (Fase F).
 analisa:
+  otomatis: true           # analisa tiap akhir siklus scheduler (full otomatis)
+  limit_per_siklus: 500    # batas artikel dianalisa per siklus
   ambang_sentimen: 2.0   # |skor| >= ini -> positif/negatif, else netral
   bobot_judul: 2.0       # kata di judul dihitung ganda vs isi
   risiko_base: 20
