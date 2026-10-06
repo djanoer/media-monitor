@@ -19,6 +19,24 @@ Catatan:
 - Jangan jalankan dua `.bat` bersamaan — ada kunci proses otomatis yang menolak duplikat.
 - Tutup semua window untuk berhenti total. Aman dimatikan kapan pun (transaksi atomik + WAL).
 - Aktifkan GitHub Pages sekali: Settings repo → Pages → source `main`, folder `/docs`.
+- **Retensi otomatis:** tiap ekspor menghapus artikel berumur >30 hari (`storage.retensi_hari` di `config/settings.yaml`). Halaman hanya menampilkan 8 berita terbaru per media.
+
+## Ringkasan AI via Groq (opsional)
+
+Modal detail berita menampilkan **📝 RINGKASAN ✨ AI** bila tersedia — ringkasan 3-4 kalimat yang ditulis model LLM (Qwen 3 via Groq, gratis), lebih natural dibaca daripada ringkasan ekstraktif (kalimat asli artikel).
+
+**Setup:** daftar gratis di [console.groq.com](https://console.groq.com/) → buat API key → taruh di `.env`:
+```
+GROQ_API_KEY=gsk_isi-dengan-key-kamu
+```
+Tanpa key, semua tetap jalan normal memakai ringkasan ekstraktif.
+
+**Cara kerja saat `ekspor-statis.bat` dijalankan:**
+- Maks 30 artikel 24 jam terakhir yang belum punya ringkasan AI diproses, jeda 3 detik antar request; hasilnya di-cache di DB (tiap artikel cuma dipanggil sekali).
+- Kena rate limit (429) → tunggu 60/120/240 detik lalu coba lagi artikel yang sama (maks 3x); masih gagal → berhenti rapi, sisanya lanjut di ekspor berikutnya.
+- Free tier tidak minta kartu kredit — tanpa kartu tersimpan tidak ada tagihan; skenario terburuk hanya kuota habis dan ringkasan AI tertunda.
+
+Pengaturan lengkap di `config/settings.yaml` → `ringkasan_ai` (model, batas artikel, jeda, retry).
 
 ## Menjalankan scheduler (manual / testing)
 
