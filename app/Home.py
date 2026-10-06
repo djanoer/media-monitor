@@ -124,6 +124,12 @@ button[data-testid="stExpandSidebarButton"]::after {content:"»";}
 /* item berita di dalam kartu kolom */
 .mi-item-title {font-size:13px; font-weight:600; color:#e6ecff;
   line-height:1.35; margin-top:6px;}
+/* bingkai kartu kolom media: container(border=True) native di dalam
+   kolom grid. Daftar scroll = container(height=470) di dalamnya. */
+div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] {
+  background:linear-gradient(180deg,#111d3c,#0e1730);
+  border:1px solid rgba(90,130,255,.18); border-radius:12px;
+  padding:10px 12px; margin-bottom:28px;}
 /* judul sebagai st.button native -> dialog langsung tanpa navigasi.
    Tombol-tombol judul hanya ada di kolom-kolom grid kartu media. */
 div[data-testid="stColumn"] div[data-testid="stButton"] {margin:4px 0 0;}
@@ -477,31 +483,33 @@ for _r in range(0, len(names_grid), 4):
     _cols = st.columns(4)
     for _col, _name in zip(_cols, names_grid[_r:_r + 4]):
         with _col:
-            st.markdown(
-                kmp.kepala_kartu_media(
-                    _name, display[_name], warna[_name],
-                    dist_pm.get(_name, {}), len(grid[_name])),
-                unsafe_allow_html=True)
-            # Daftar scroll native; judul = st.button -> dialog langsung
-            # tanpa navigasi (dulu: hyperlink ?art= yg bikin kesan
-            # "pindah halaman").
-            with st.container(height=430, border=True):
-                for _i, a in enumerate(grid[_name]):
-                    st.markdown(kmp.pills_artikel(a),
-                                unsafe_allow_html=True)
-                    _key = ("dlg-"
-                            + hashlib.md5(a["url"].encode()).hexdigest()[:16])
-                    if st.button(a.get("title") or "(tanpa judul)",
-                                 key=_key):
-                        _dialog_artikel(a)
-                    _cup = kmp.cuplikan(a)
-                    if _cup:
-                        st.markdown(
-                            f'<div class="mi-item-sum">{_cup}</div>',
-                            unsafe_allow_html=True)
-                    if _i < len(grid[_name]) - 1:
-                        st.markdown('<div class="mi-sep"></div>',
+            # Satu kartu utuh (desain awal): bingkai = container
+            # border=True native; daftar = container scroll native.
+            # Judul = st.button -> dialog langsung tanpa navigasi
+            # (dulu: hyperlink ?art= yg bikin kesan "pindah halaman").
+            with st.container(border=True):
+                st.markdown(
+                    kmp.kepala_kartu_media(
+                        _name, display[_name], warna[_name],
+                        dist_pm.get(_name, {}), len(grid[_name])),
+                    unsafe_allow_html=True)
+                with st.container(height=470):
+                    for _i, a in enumerate(grid[_name]):
+                        st.markdown(kmp.pills_artikel(a),
                                     unsafe_allow_html=True)
+                        _key = ("dlg-"
+                                + hashlib.md5(a["url"].encode()).hexdigest()[:16])
+                        if st.button(a.get("title") or "(tanpa judul)",
+                                     key=_key):
+                            _dialog_artikel(a)
+                        _cup = kmp.cuplikan(a)
+                        if _cup:
+                            st.markdown(
+                                f'<div class="mi-item-sum">{_cup}</div>',
+                                unsafe_allow_html=True)
+                        if _i < len(grid[_name]) - 1:
+                            st.markdown('<div class="mi-sep"></div>',
+                                        unsafe_allow_html=True)
 
 # ---------- footer ----------
 st.markdown(
