@@ -108,7 +108,7 @@ div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[
 .mi-hdr-count {margin-left:auto; font-size:11px; font-weight:700;
   color:#070c18; border-radius:20px; padding:2px 10px;}
 .mi-hdr-row {display:flex; justify-content:space-between; font-size:10px;
-  color:#8ea0c9; letter-spacing:.6px; margin-top:7px;}
+  color:#5b9dff; letter-spacing:.6px; margin-top:7px;}
 .mi-hdr-vals {color:#b6c6f0; letter-spacing:0;}
 .mi-hdr-bar {display:flex; height:5px; border-radius:3px; overflow:hidden;
   background:rgba(255,255,255,.07); margin-top:4px;}
@@ -152,7 +152,7 @@ button[data-testid="stExpandSidebarButton"]::after {content:"»";}
 div[data-testid="stColumn"] div[data-testid="stButton"] {margin:4px 0 0;}
 div[data-testid="stColumn"] div[data-testid="stButton"] > button {
   background:transparent; border:none; box-shadow:none; padding:0;
-  font-size:12px; font-weight:600; color:#e6ecff; line-height:1.4;
+  font-size:13px; font-weight:600; color:#e6ecff; line-height:1.45;
   text-align:left; width:100%; min-height:0; height:auto; white-space:normal;}
 div[data-testid="stColumn"] div[data-testid="stButton"] > button:hover {
   color:#8fb0ff; text-decoration:underline;
