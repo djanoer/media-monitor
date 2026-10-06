@@ -9,6 +9,7 @@ Tabel:
 from __future__ import annotations
 
 import datetime
+import json
 import pathlib
 import sqlite3
 
@@ -78,6 +79,39 @@ CREATE TABLE IF NOT EXISTS claim_clusters (
 );
 """
 
+_SCHEMA_FASE_D = """
+-- Fase D: respon publik (YouTube + Google Trends), pilot karhutla.
+CREATE TABLE IF NOT EXISTS youtube_videos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    topik TEXT NOT NULL,
+    video_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    channel TEXT,
+    published_at TEXT,
+    view_count INTEGER DEFAULT 0,
+    like_count INTEGER DEFAULT 0,
+    comment_count INTEGER DEFAULT 0,
+    fetched_at TEXT NOT NULL,
+    UNIQUE(topik, video_id)
+);
+CREATE TABLE IF NOT EXISTS trends_harian (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    topik TEXT NOT NULL,
+    keyword TEXT NOT NULL,
+    tanggal TEXT NOT NULL,
+    skor INTEGER NOT NULL,
+    fetched_at TEXT NOT NULL,
+    UNIQUE(topik, keyword, tanggal)
+);
+CREATE TABLE IF NOT EXISTS trends_ringkas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    topik TEXT NOT NULL,
+    fetched_at TEXT NOT NULL,
+    per_daerah TEXT,
+    terkait TEXT
+);
+"""
+
 
 def _utcnow() -> str:
     return datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -95,6 +129,7 @@ def init_db(db_path: str | pathlib.Path) -> None:
     """Buat tabel bila belum ada. Aman dipanggil berulang."""
     with _connect(db_path) as conn:
         conn.executescript(SCHEMA)
+        conn.executescript(_SCHEMA_FASE_D)
 
 
 def insert_articles(db_path: str | pathlib.Path, articles: list[dict]) -> int:
@@ -567,5 +602,72 @@ def save_verifikasi(
                 hasil.get("headline_flags"),
                 _utcnow(),
                 cluster_id,
+            ),
+        )
+
+
+def simpan_video_youtube(
+    db_path: str | pathlib.Path, topik: str, videos: list[dict]
+) -> int:
+    """Simpan/refresh video YouTube per topik. Kembalikan jumlah tersimpan."""
+    now = _utcnow()
+    n = 0
+    with _connect(db_path) as conn:
+        for v in videos:
+            conn.execute(
+                "INSERT INTO youtube_videos"
+                " (topik, video_id, title, channel, published_at,"
+                "  view_count, like_count, comment_count, fetched_at)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                " ON CONFLICT(topik, video_id) DO UPDATE SET"
+                "  title=excluded.title, channel=excluded.channel,"
+                "  view_count=excluded.view_count, like_count=excluded.like_count,"
+                "  comment_count=excluded.comment_count,"
+                "  fetched_at=excluded.fetched_at",
+                (
+                    topik, v["video_id"], v.get("title", ""),
+                    v.get("channel"), v.get("published_at"),
+                    v.get("view_count", 0), v.get("like_count", 0),
+                    v.get("comment_count", 0), now,
+                ),
+            )
+            n += 1
+    return n
+
+
+def simpan_trends_harian(
+    db_path: str | pathlib.Path, topik: str, tren: dict
+) -> int:
+    """Simpan skor minat harian per keyword. Kembalikan jumlah baris."""
+    now = _utcnow()
+    n = 0
+    with _connect(db_path) as conn:
+        for rec in tren.get("minat_harian", []):
+            for kw in tren.get("keywords", []):
+                conn.execute(
+                    "INSERT INTO trends_harian"
+                    " (topik, keyword, tanggal, skor, fetched_at)"
+                    " VALUES (?, ?, ?, ?, ?)"
+                    " ON CONFLICT(topik, keyword, tanggal) DO UPDATE SET"
+                    "  skor=excluded.skor, fetched_at=excluded.fetched_at",
+                    (topik, kw, rec["tanggal"], rec.get(kw, 0), now),
+                )
+                n += 1
+    return n
+
+
+def simpan_trends_ringkas(
+    db_path: str | pathlib.Path, topik: str, tren: dict
+) -> None:
+    """Simpan per-daerah + frasa terkait sebagai JSON (satu baris per run)."""
+    with _connect(db_path) as conn:
+        conn.execute(
+            "INSERT INTO trends_ringkas"
+            " (topik, fetched_at, per_daerah, terkait) VALUES (?, ?, ?, ?)",
+            (
+                topik,
+                _utcnow(),
+                json.dumps(tren.get("per_daerah", [])),
+                json.dumps(tren.get("terkait", {})),
             ),
         )

@@ -42,5 +42,14 @@ verification:
     - ngeri
     - "!"
 
+# Respon publik (Fase D, pilot karhutla): YouTube Data API + Google Trends.
+respon_publik:
+  youtube_api_key_env: "YOUTUBE_API_KEY"  # dari environment, JANGAN di config
+  youtube_max_videos: 20
+  youtube_region: "ID"
+  trends_geo: "ID"
+  trends_timeframe: "today 1-m"  # 1 bulan terakhir
+  trends_keywords: 3             # ambil N high_precision teratas sbg keyword
+
 storage:
   db_path: "data/media_monitor.db"
