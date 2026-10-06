@@ -49,6 +49,27 @@ CREATE TABLE IF NOT EXISTS keyword_watchlist (
     active INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL
 );
+
+-- Fase B: klaim yang diekstrak dari artikel (satu artikel bisa banyak klaim).
+CREATE TABLE IF NOT EXISTS claims (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    article_url TEXT NOT NULL,
+    media TEXT NOT NULL,
+    claim_text TEXT NOT NULL,
+    claim_type TEXT NOT NULL,
+    published_at TEXT,
+    extracted_at TEXT NOT NULL,
+    cluster_id INTEGER,
+    UNIQUE(article_url, claim_text)
+);
+CREATE INDEX IF NOT EXISTS idx_claims_cluster ON claims(cluster_id);
+
+-- Fase B: cluster klaim sejenis (sinyal koroborasi lintas media).
+CREATE TABLE IF NOT EXISTS claim_clusters (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    size INTEGER NOT NULL,
+    created_at TEXT NOT NULL
+);
 """
 
 
@@ -285,7 +306,7 @@ def get_media_last_status(db_path: str | pathlib.Path) -> dict[str, dict]:
 
 
 def _like_aman(keyword: str) -> str:
-    """Escape karakter khusus LIKE (%, _, \) lalu bungkus dengan %...%."""
+    r"""Escape karakter khusus LIKE (%, _, \) lalu bungkus dengan %...%."""
     aman = (
         keyword.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     )
@@ -387,3 +408,94 @@ def count_matrix(
     Dipakai untuk komparasi antar media: isu apa yang paling dibahas siapa.
     """
     return {kw: count_by_media_keyword(db_path, kw) for kw in keywords}
+
+
+def insert_claims(
+    db_path: str | pathlib.Path, claims: list[dict]
+) -> list[int]:
+    """Simpan klaim; (article_url, claim_text) yang sudah ada dilewati.
+
+    Kembalikan id klaim untuk tiap input (yang sudah ada -> id lama).
+    """
+    if not claims:
+        return []
+    now = _utcnow()
+    ids: list[int] = []
+    with _connect(db_path) as conn:
+        for c in claims:
+            conn.execute(
+                "INSERT OR IGNORE INTO claims"
+                " (article_url, media, claim_text, claim_type,"
+                "  published_at, extracted_at)"
+                " VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    c["article_url"],
+                    c["media"],
+                    c["claim_text"],
+                    c["claim_type"],
+                    c.get("published_at"),
+                    now,
+                ),
+            )
+            row = conn.execute(
+                "SELECT id FROM claims WHERE article_url = ? AND claim_text = ?",
+                (c["article_url"], c["claim_text"]),
+            ).fetchone()
+            ids.append(row["id"])
+    return ids
+
+
+def save_clusters(
+    db_path: str | pathlib.Path, groups: list[list[int]]
+) -> list[int]:
+    """Simpan cluster klaim; update claims.cluster_id. Kembalikan id cluster.
+
+    groups: daftar cluster, tiap cluster = daftar id klaim.
+    """
+    if not groups:
+        return []
+    now = _utcnow()
+    cluster_ids: list[int] = []
+    with _connect(db_path) as conn:
+        for g in groups:
+            cur = conn.execute(
+                "INSERT INTO claim_clusters (size, created_at) VALUES (?, ?)",
+                (len(g), now),
+            )
+            cid = cur.lastrowid
+            conn.executemany(
+                "UPDATE claims SET cluster_id = ? WHERE id = ?",
+                [(cid, claim_id) for claim_id in g],
+            )
+            cluster_ids.append(cid)
+    return cluster_ids
+
+
+def get_clusters(
+    db_path: str | pathlib.Path,
+) -> list[dict]:
+    """Ambil semua cluster + klaim anggotanya (read-only, untuk laporan/UI)."""
+    with _connect(db_path) as conn:
+        clusters = [
+            dict(r)
+            for r in conn.execute(
+                "SELECT id, size, created_at FROM claim_clusters ORDER BY size DESC"
+            )
+        ]
+        for cl in clusters:
+            cl["claims"] = [
+                dict(r)
+                for r in conn.execute(
+                    "SELECT id, media, claim_text, claim_type, article_url"
+                    " FROM claims WHERE cluster_id = ? ORDER BY id",
+                    (cl["id"],),
+                )
+            ]
+    return clusters
+
+
+def count_claims(db_path: str | pathlib.Path) -> int:
+    """Jumlah total klaim di DB (helper diagnostik)."""
+    with _connect(db_path) as conn:
+        row = conn.execute("SELECT COUNT(*) AS n FROM claims").fetchone()
+        return row["n"]
