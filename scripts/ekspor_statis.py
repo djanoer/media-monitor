@@ -135,29 +135,39 @@ def _detail_artikel(a: dict, settings: dict, verdicts: dict,
     t_tinggi = float(analisa_cfg.get("ambang_risiko_tinggi", 65))
     t_sedang = float(analisa_cfg.get("ambang_risiko_sedang", 35))
     lvl = a.get("risiko") or "Rendah"
+    # Skala ala referensi "Penjelasan Analisis" (Bor): threshold + deskripsi
+    # persis seperti mockup, bukan dari config.
+    tanya = (f"Kenapa berita ini {sent} dengan risiko "
+             f"{(a.get('risiko') or 'rendah').lower()}?")
     skala_r = []
-    for nama, lo, hi, ket in [
-            ("Rendah", 0, t_sedang - 1,
-             "Minim potensi dampak buruk; umumnya kabar biasa/harian."),
-            ("Sedang", t_sedang, t_tinggi - 1,
-             "Berpotensi menimbulkan keresahan atau dampak sedang."),
-            ("Tinggi", t_tinggi, 100,
-             "Isu berbahaya/urgent; atau klaim belum terverifikasi + "
-             "headline bombastis.")]:
+    for nama, rentang, ket in [
+            ("Rendah", "0–21",
+             "Minim potensi dampak buruk atau kerugian berarti; "
+             "umumnya kabar biasa/harian."),
+            ("Sedang", "22–54",
+             "Berpotensi menimbulkan keresahan atau dampak sedang — "
+             "perlu diwaspadai."),
+            ("Tinggi", "55–100",
+             "Isu berbahaya/urgent: bencana, kecelakaan, krisis, "
+             "konflik, korupsi besar.")]:
         w = WARNA_RISIKO.get(nama, "#9aa5c4")
         on = ' style="border-color:%s"' % w if nama == lvl else ""
         skala_r.append(
             f'<div class="skala{" on" if nama == lvl else ""}"{on}>'
             f'<span class="bd" style="background:{w}22;color:{w};'
             f'border:1px solid {w}55">{nama}</span> '
-            f'Skor {lo:g}–{hi:g}. {_esc(ket)}</div>')
-    amb = float(analisa_cfg.get("ambang_sentimen", 2.0))
+            f'Skor risiko {rentang}. {_esc(ket)}</div>')
     skala_s = []
     for nama, ket in [
-            ("positif", f"Nuansa baik lebih dominan. Skor ≥ +{amb:g}."),
-            ("netral", f"Isi berimbang/objektif. Skor antara −{amb:g} "
-                       f"sampai +{amb:g}."),
-            ("negatif", f"Nuansa buruk lebih dominan. Skor ≤ −{amb:g}.")]:
+            ("positif",
+             "Nuansa baik lebih dominan (naik, untung, sukses, tumbuh, "
+             "menang, capai). Skor sentimen > +0.15."),
+            ("netral",
+             "Isi berimbang/objektif; tidak condong ke positif maupun "
+             "negatif. Skor antara -0.15 sampai +0.15."),
+            ("negatif",
+             "Nuansa buruk lebih dominan (krisis, korupsi, jatuh, tewas, "
+             "bencana, gagal). Skor sentimen < -0.15.")]:
         w = WARNA_SENTIMEN.get(nama, "#9aa5c4")
         on = ' style="border-color:%s"' % w if nama == sent else ""
         skala_s.append(
@@ -165,8 +175,10 @@ def _detail_artikel(a: dict, settings: dict, verdicts: dict,
             f'<span class="bd" style="background:{w}22;color:{w};'
             f'border:1px solid {w}55">{nama.capitalize()}</span> '
             f'{_esc(ket)}</div>')
-    why = ('<b>🛡 SKALA RISIKO (0–100)</b>' + "".join(skala_r)
-           + '<b>💬 SKALA SENTIMEN</b>' + "".join(skala_s))
+    why = (f'<div class="mai"><b>🤖 {_esc(tanya)}</b><br>AI: {_esc(ai)}</div>'
+           f'<div class="skhead">🛡 SKALA RISIKO (0–100)</div>'
+           + "".join(skala_r) +
+           f'<div class="skhead">💬 SKALA SENTIMEN</div>' + "".join(skala_s))
 
     isi = (a.get("isi_lengkap") or "").strip()
     paragraf = [p.strip() for p in isi.split("\n\n") if p.strip()]
@@ -410,6 +422,7 @@ ul{margin:4px 0;padding-left:18px;font-size:.85rem;color:#c6d2e8}
 .skala{border:1px solid #2a3352;border-radius:8px;padding:8px 12px;margin:6px 0;font-size:.85rem;color:#c6d2e8}
 .skala.on{border-width:2px}
 .skala b{color:#e6ebf5}
+.skhead{font-weight:700;color:#7dd3fc;letter-spacing:1px;font-size:.82rem;margin:14px 0 4px}
 footer{margin-top:36px;padding-top:16px;border-top:1px solid #1e2745;color:#6b7280;font-size:.8rem;text-align:center}
 a{color:#7dd3fc}
 """
