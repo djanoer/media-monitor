@@ -37,14 +37,37 @@ st.markdown("""
     radial-gradient(700px 500px at 50% 100%, rgba(167,139,250,.08), transparent);}
 .stApp, .stApp * {font-family:"Segoe UI", system-ui, -apple-system, Roboto,
   "Helvetica Neue", Arial, sans-serif;}
-/* kartu kolom media = bordered container, scroll bila panjang */
+/* kartu kolom media = bordered container, tinggi seragam + scroll */
 div[data-testid="stVerticalBlockBorderWrapper"] {
   border:1px solid rgba(90,130,255,.18) !important;
   border-radius:12px !important;
   background:linear-gradient(180deg, #111d3c, #0e1730) !important;
   padding:10px 12px !important;
-  max-height:640px;
-  overflow-y:auto;}
+  height:640px;
+  overflow-y:auto;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(90,130,255,.4) transparent;}
+div[data-testid="stVerticalBlockBorderWrapper"]::-webkit-scrollbar {width:6px;}
+div[data-testid="stVerticalBlockBorderWrapper"]::-webkit-scrollbar-thumb {
+  background:rgba(90,130,255,.4); border-radius:3px;}
+/* Tombol sembunyi/tampil sidebar: font ikon Material kadang gagal dimuat
+   sehingga muncul teks ligature "keyboard_double_arrow_right".
+   Sembunyikan ikon asli, ganti chevron CSS. */
+button[data-testid="stSidebarCollapseButton"],
+div[data-testid="stSidebarCollapsedControl"] button,
+button[data-testid="collapsedControl"] {font-size:0 !important;}
+button[data-testid="stSidebarCollapseButton"] span,
+button[data-testid="stSidebarCollapseButton"] svg,
+div[data-testid="stSidebarCollapsedControl"] button span,
+div[data-testid="stSidebarCollapsedControl"] button svg,
+button[data-testid="collapsedControl"] span,
+button[data-testid="collapsedControl"] svg {display:none !important;}
+button[data-testid="stSidebarCollapseButton"]::after,
+div[data-testid="stSidebarCollapsedControl"] button::after,
+button[data-testid="collapsedControl"]::after {
+  content:"»"; font-size:20px; color:#8ea0c9; line-height:1;}
+section[data-testid="stSidebar"]
+button[data-testid="stSidebarCollapseButton"]::after {content:"«";}
 .mm-penjelasan {background:rgba(79,140,255,.10);
   border:1px solid rgba(90,130,255,.25); border-radius:10px;
   padding:10px 12px; margin:8px 0; color:#dbe4ff; font-size:13px;}
@@ -53,11 +76,20 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
   padding:8px 12px; margin:6px 0; color:#dbe4ff; font-size:13px;}
 .mm-skala-aktif {border:1px solid #fbbf24 !important;}
 .mi-gridhead {display:flex; align-items:center; gap:8px;
-  padding:4px 2px 10px; border-bottom:1px solid rgba(255,255,255,.08);
-  margin-bottom:6px;}
-.mi-gridname {font-size:15px; font-weight:700; color:#e6ecff;}
+  padding:6px 2px 12px; border-bottom:1px solid rgba(255,255,255,.08);
+  margin-bottom:4px;}
+.mi-gridname {font-size:15px; font-weight:700; color:#e6ecff;
+  letter-spacing:.2px;}
 .mi-gridcount {margin-left:auto; font-size:11px; font-weight:700; color:#070c18;
   border-radius:20px; padding:2px 10px;}
+/* item berita di dalam kartu kolom */
+.mi-item {background:rgba(255,255,255,.025); border-radius:9px;
+  border-left:3px solid #8ea0c9; padding:8px 12px; margin:8px 0;}
+.mi-item-title {font-size:13px; font-weight:600; color:#e6ecff;
+  line-height:1.35; margin-top:6px;}
+.mi-item-sum {font-size:11.5px; color:#8ea0c9; line-height:1.5; margin-top:4px;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  overflow:hidden;}
 div[data-testid="stButton"] button {font-size:11px !important;
   padding:2px 8px !important; margin-top:-4px !important;}
 </style>

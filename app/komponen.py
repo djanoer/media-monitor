@@ -75,14 +75,19 @@ def bar_agregat(
     )
 
 
-def item_berita_grid(r: dict, max_judul: int = 120) -> str:
+def item_berita_grid(r: dict, max_judul: int = 110,
+                      max_ringkas: int = 130) -> str:
     """Satu item berita untuk grid kolom media (ala referensi).
 
     Border kiri berwarna sesuai level risiko; badge sentimen + risiko;
-    judul di bawahnya.
+    judul + cuplikan ringkasan di bawahnya.
     """
     col = WARNA_RISIKO.get(r.get("risiko"), "#8ea0c9")
     judul = html_mod.escape((r.get("title") or "(tanpa judul)")[:max_judul])
+    sum_mentah = fmt.bersihkan_html(r.get("summary") or "").strip()
+    ringkas = html_mod.escape(sum_mentah[:max_ringkas])
+    if len(sum_mentah) > max_ringkas:
+        ringkas += "…"
     isi = (f'<div class="mi-item" style="border-left-color:{col}">'
            f'<div>')
     if r.get("risiko"):
@@ -90,8 +95,10 @@ def item_berita_grid(r: dict, max_judul: int = 120) -> str:
     if r.get("sentimen"):
         isi += pill(r["sentimen"],
                     WARNA_SENTIMEN.get(r["sentimen"], "#8ea0c9"))
-    isi += (f'</div><div class="mi-item-title">{judul}</div>'
-            f'</div>')
+    isi += f'</div><div class="mi-item-title">{judul}</div>'
+    if ringkas:
+        isi += f'<div class="mi-item-sum">{ringkas}</div>'
+    isi += '</div>'
     return isi
 
 
