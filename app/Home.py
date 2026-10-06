@@ -815,10 +815,11 @@ def _dialog_artikel(a: dict) -> None:
 
         unsafe_allow_html=True)
 
-    summary = _ringkasan_detail_3_kalimat(a)
+    summary, is_ai = _ringkasan_lokal(a)
     if summary:
+        _lbl = "📝 RINGKASAN ✨ AI" if is_ai else "📝 RINGKASAN"
         st.markdown(
-            '<div class="mm-detail-time">Ringkasan otomatis · ekstraktif</div>'
+            f'<div class="mm-detail-time">{_lbl}</div>'
             '<div class="mm-detail-body"><p>'
             + html_mod.escape(summary) + '</p></div>',
             unsafe_allow_html=True,
@@ -826,26 +827,41 @@ def _dialog_artikel(a: dict) -> None:
     else:
         st.caption("Teks belum cukup untuk dirangkum. Gunakan Buka sumber untuk membaca artikel asli.")
 
-def _ringkasan_detail_3_kalimat(a: dict) -> str:
-    """Extract up to three original sentences; no model inference."""
+    _dianalisis = _teks_dianalisis_lokal(a)
+    st.markdown(
+        '<div class="mm-detail-time">🔍 TEKS YANG DIANALISIS</div>'
+        '<div class="mm-detail-body"><p>'
+        + (html_mod.escape(_dianalisis) if _dianalisis
+           else "Hanya judul yang dihitung (ringkasan kosong).")
+        + '</p></div>',
+        unsafe_allow_html=True,
+    )
+
+def _ringkasan_lokal(a: dict) -> tuple[str, bool]:
+    """Ringkasan untuk dialog lokal — sama persis dengan versi publish.
+
+    Prioritas: ringkasan AI (cache Groq) bila ada, else ekstraktif
+    5 kalimat pertama isi_lengkap maks 900 char.
+    Returns: (teks, adalah_ai).
+    """
     import re
-    source = str(a.get("isi_lengkap") or "").strip()
-    if not source:
-        source = fmt.bersihkan_html(a.get("summary") or "").strip()
-        if kmp.mirip_judul(source, a.get("title")):
-            return ""
-    source = fmt.bersihkan_html(source)
-    source = re.sub(r"(?im)^\s*SCROLL TO CONTINUE WITH CONTENT\s*$", "", source)
-    source = re.sub(r"\s+", " ", source).strip()
-    sentences = re.split(r"(?<=[.!?])\s+(?=[A-ZÀ-ÖØ-Þ0-9\"“])", source)
-    selected = []
-    for sentence in sentences:
-        sentence = sentence.strip()
-        if sentence and len(sentence.split()) >= 6 and sentence not in selected:
-            selected.append(sentence)
-        if len(selected) == 3:
-            break
-    return " ".join(selected) if selected else source
+    ringkasan_ai = (a.get("ringkasan_ai") or "").strip()
+    if ringkasan_ai:
+        return ringkasan_ai, True
+    isi = (a.get("isi_lengkap") or "").strip()
+    if not isi:
+        return "", False
+    kal = [k.strip() for k in re.split(r"(?<=[.!?])\s+", isi) if k.strip()]
+    teks = " ".join(kal[:5]).strip()
+    if len(teks) > 900:
+        teks = teks[:900].rsplit(" ", 1)[0] + "…"
+    return teks, False
+
+def _teks_dianalisis_lokal(a: dict) -> str:
+    """Teks yang BENAR-BENAR dihitung sistem: summary RSS (judul dihitung
+    terpisah). Sama persis dengan _teks_dianalisis di scripts/ekspor_statis.py.
+    """
+    return fmt.bersihkan_html(a.get("summary") or "").strip()
 
 def _komponen_label(a: dict) -> tuple[str, str, list[tuple[str, float]]]:
 
