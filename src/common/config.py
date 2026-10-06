@@ -27,3 +27,11 @@ def load_media(path: pathlib.Path | str | None = None) -> list[dict]:
     with open(path, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
     return [m for m in data.get("media", []) if m.get("active", True)]
+
+
+def load_topics(path: pathlib.Path | str | None = None) -> dict:
+    """Baca config/topics.yaml -> dict {nama_topik: spesifikasi keyword}."""
+    path = pathlib.Path(path) if path else CONFIG_DIR / "topics.yaml"
+    with open(path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    return data.get("topics", {})

@@ -1,0 +1,44 @@
+# Topik yang dipantau + kamus keyword per topik.
+# Aturan pencocokan (lihat src/processing/topic_matcher.py):
+# - high_precision: frasa cocok (case-insensitive, batas kata) -> langsung tag.
+# - contextual: kata umum yang HANYA jadi tag bila ditemani >=1 context_words
+#   di judul+ringkasan (mencegah false positive, mis. "kebakaran" saja).
+# - exclude: frasa yang membatalkan tag walau aturan lain cocok.
+# Tambah topik = tambah blok di bawah ini, tanpa ubah kode.
+topics:
+  karhutla:
+    display: "Karhutla"
+    high_precision:
+      - karhutla
+      - kebakaran hutan
+      - kebakaran lahan
+      - hutan terbakar
+      - lahan terbakar
+      - hutan hangus
+      - lahan hangus
+      - titik panas
+      - titik api
+      - kabut asap
+      - manggala agni
+      - water bombing
+      - teknologi modifikasi cuaca
+    contextual:
+      - kebakaran
+      - asap
+      - gambut
+      - hotspot
+    context_words:
+      - hutan
+      - lahan
+      - hektare
+      - bnpb
+      - klhk
+      - satgas
+      - gambut
+    exclude:
+      - kebakaran mobil
+      - kebakaran rumah
+      - kebakaran pasar
+      - kebakaran gedung
+      - kebakaran kapal
+      - kebakaran pabrik

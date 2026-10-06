@@ -249,6 +249,26 @@ def count_articles_since(db_path: str | pathlib.Path, since_iso: str) -> int:
         return row["n"]
 
 
+def get_articles_since(
+    db_path: str | pathlib.Path, since_iso: str, limit: int = 50000
+) -> list[dict]:
+    """Ambil artikel dengan fetched_at >= since_iso (read-only).
+
+    Dipakai skrip analisa offline (mis. cek cakupan topik): kembalikan
+    url, media, title, summary, published_at. Urut dari yang terlama.
+    """
+    with _connect(db_path) as conn:
+        return [
+            dict(r)
+            for r in conn.execute(
+                "SELECT url, media, title, summary, published_at"
+                " FROM articles WHERE fetched_at >= ?"
+                " ORDER BY fetched_at ASC LIMIT ?",
+                (since_iso, limit),
+            )
+        ]
+
+
 def get_media_last_status(db_path: str | pathlib.Path) -> dict[str, dict]:
     """Status fetch terakhir per media.
 
