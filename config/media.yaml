@@ -73,42 +73,42 @@ media:
     active: true
   - name: tribunnews
     display: Tribunnews
-    tier: 1  # kredibilitas sumber (Fase C; perlu validasi Bor)
+    tier: 2  # riset 6 Okt 2026: Monash Lens/NewsGuard catat sebar sumber tak terverifikasi (Bucha); model klik/agregasi
     color: "#E64980"
     feed: "https://news.google.com/rss/search?q=site:tribunnews.com&hl=id&gl=ID&ceid=ID:id"
     type: gnews
     active: true
   - name: okezone
     display: Okezone
-    tier: 1  # kredibilitas sumber (Fase C; perlu validasi Bor)
+    tier: 2  # riset 6 Okt 2026: portal klik-driven MNC; tak masuk survei trust Reuters
     color: "#15AABF"
     feed: "https://news.google.com/rss/search?q=site:okezone.com&hl=id&gl=ID&ceid=ID:id"
     type: gnews
     active: true
   - name: sindonews
     display: Sindonews
-    tier: 1  # kredibilitas sumber (Fase C; perlu validasi Bor)
+    tier: 2  # riset 6 Okt 2026: portal MNC model klik; trust Reuters 48%
     color: "#2F9E44"
     feed: "https://www.sindonews.com/feed"
     type: native
     active: true
   - name: viva
     display: Viva
-    tier: 1  # kredibilitas sumber (Fase C; perlu validasi Bor)
+    tier: 2  # riset 6 Okt 2026: portal grup VIVA model klik/agregasi
     color: "#1971C2"
     feed: "https://news.google.com/rss/search?q=site:viva.co.id&hl=id&gl=ID&ceid=ID:id"
     type: gnews
     active: true
   - name: merdeka
     display: Merdeka
-    tier: 1  # kredibilitas sumber (Fase C; perlu validasi Bor)
+    tier: 2  # riset 6 Okt 2026: portal KLY model klik; trust Reuters 49%
     color: "#9C36B5"
     feed: "https://news.google.com/rss/search?q=site:merdeka.com&hl=id&gl=ID&ceid=ID:id"
     type: gnews
     active: true
   - name: suara
     display: Suara.com
-    tier: 1  # kredibilitas sumber (Fase C; perlu validasi Bor)
+    tier: 2  # riset 6 Okt 2026: trust Reuters 46% (terendah dari 16); portal Arkadia
     color: "#F59F00"
     feed: "https://news.google.com/rss/search?q=site:suara.com&hl=id&gl=ID&ceid=ID:id"
     type: gnews
