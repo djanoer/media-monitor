@@ -90,7 +90,7 @@ div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] {
    setelah aturan kartu utama sehingga menang. */
 div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"] {
   background:rgba(255,255,255,.03);
-  border:1px solid rgba(255,255,255,.09); border-radius:10px;
+  border:none; border-left:3px solid #8ea0c9; border-radius:10px;
   padding:8px 12px; margin:0 0 10px;}
 /* garis kiri kartu artikel ikut level risiko (penanda .mi-risk di dalam) */
 .mi-risk {display:none;}
