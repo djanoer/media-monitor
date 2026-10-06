@@ -52,9 +52,9 @@ respon_publik:
   trends_keywords: 3             # ambil N high_precision teratas sbg keyword
   trends_jeda_detik: 12          # jeda antar query Trends (anti rate-limit)
   trends_maks_coba: 3            # retry dgn backoff 60/120/240 dtk bila 429
-  topik_otomatis: 3              # N topik terhangat dari 24 jam terakhir
+  topik_otomatis: 5              # N topik terhangat dari 24 jam terakhir
   topik_manual: []               # kosong = full otomatis 24 jam (karhutla: arsip)
-  topik_maks_total: 5            # batas total topik per jalan
+  topik_maks_total: 6            # batas total topik per jalan
   cara_jalan: "manual via respon-publik.bat (double-click di laptop)"
 
 # Analisa sentimen + risiko per artikel (Fase F).

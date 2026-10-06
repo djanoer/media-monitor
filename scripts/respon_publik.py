@@ -126,8 +126,13 @@ def _topik_otomatis(db_path: str, rp: dict) -> list[str]:
              - timedelta(hours=24)).isoformat()
     arts = repository.get_articles_since(db_path, sejak)
     jm = [(a["title"], a["media"]) for a in arts if a.get("title")]
-    otomatis = topik_hangat.ekstrak_topik(
-        jm, n=rp.get("topik_otomatis", 3))
+    n_minta = rp.get("topik_otomatis", 5)
+    otomatis = topik_hangat.ekstrak_topik(jm, n=n_minta)
+    if len(otomatis) < n_minta:
+        # Fallback: data 24 jam sepi -> turunkan ambang artikel agar slot
+        # terisi; syarat lintas-media tetap dijaga (anti obsesi 1 redaksi).
+        otomatis = topik_hangat.ekstrak_topik(
+            jm, n=n_minta, min_artikel=2, min_media=2)
     manual = rp.get("topik_manual", [])
     hasil = topik_hangat.gabung_topik(
         manual, otomatis, maks=rp.get("topik_maks_total", 5))

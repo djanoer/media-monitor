@@ -117,3 +117,13 @@ def test_hapus_topik(tmp_path):
     assert repository.daftar_topik_respon(db) == ["com"]  # belum dihapus
     hapus_topik(db, "com", jalan=True)
     assert repository.daftar_topik_respon(db) == []
+
+
+def test_ekstrak_topik_fallback_ambang_rendah():
+    # Data sepi: strict (min_artikel=3) tidak penuh, relaxed (2) mengisi.
+    data = [(f"Topik unik pagi ini {i}", m)
+            for m in ("kompas", "detik") for i in range(2)]
+    strict = topik_hangat.ekstrak_topik(data, n=5, min_artikel=3, min_media=2)
+    relaxed = topik_hangat.ekstrak_topik(data, n=5, min_artikel=2, min_media=2)
+    assert len(relaxed) >= len(strict)
+    assert len(relaxed) > 0
