@@ -146,7 +146,8 @@ def header_kartu_minimalis(
     """Header kartu media gaya minimalis (satu blok HTML seimbang).
 
     Nama + pil count, lalu dua baris ringkas SENTIMEN (P/N/NG) dan
-    RISIKO (R/S/T) lengkap dengan mini-bar segmen. Daftar artikel
+    RISIKO (R/S/T) lengkap dengan mini-bar segmen. Baris nama diberi
+    wash gradien warna media ala referensi (.chead). Daftar artikel
     di-render pemanggil sebagai st.button native per judul di dalam
     st.container scroll, sehingga klik membuka dialog (modal) langsung
     di halaman yang sama tanpa navigasi.
@@ -160,7 +161,8 @@ def header_kartu_minimalis(
                              ("Tinggi", "#fb7185")])
     return (
         f'<div class="mi-hdr">'
-        f'<div class="mi-hdr-top">'
+        f'<div class="mi-hdr-top" style="background:linear-gradient(90deg,'
+        f'{color}38,transparent);border-bottom:1px solid {color}59">'
         f'<span class="mi-hdr-dot" style="background:{color};'
         f'box-shadow:0 0 8px {color}"></span>'
         f'<span class="mi-hdr-name">{nama}</span>'
@@ -176,6 +178,15 @@ def header_kartu_minimalis(
         f'<div class="mi-hdr-bar">{seg_r}</div>'
         f'</div>'
     )
+
+
+def waktu_pendek(iso: str | None) -> str:
+    """'2026-10-06T06:30:00+00:00' -> '6 Okt 14:30' (WITA, ringkas)."""
+    dt = fmt.parse_utc(iso)
+    if dt is None:
+        return ""
+    w = dt + fmt.WITA_OFFSET
+    return f"{w.day} {fmt.BULAN_ID[w.month - 1]} {w:%H:%M}"
 
 
 def sorot(teks_escaped: str, keyword: str | None) -> str:

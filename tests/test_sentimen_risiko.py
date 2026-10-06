@@ -140,6 +140,14 @@ def test_header_kartu_minimalis():
     assert html.count("<div") == html.count("</div>")  # seimbang
 
 
+def test_waktu_pendek():
+    from app import komponen as kmp
+    # 06:30 UTC = 14:30 WITA
+    assert kmp.waktu_pendek("2026-10-06T06:30:00+00:00") == "6 Okt 14:30"
+    assert kmp.waktu_pendek(None) == ""
+    assert kmp.waktu_pendek("bukan-tanggal") == ""
+
+
 def test_kata_berpengaruh_negatif():
     from src.processing.sentimen import kata_berpengaruh
     k = kata_berpengaruh(

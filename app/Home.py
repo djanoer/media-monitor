@@ -91,7 +91,13 @@ div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] {
 div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"] {
   background:rgba(255,255,255,.03);
   border:none; border-left:3px solid #8ea0c9; border-radius:10px;
-  padding:8px 12px; margin:0 0 10px;}
+  padding:8px 12px; margin:0 0 10px; transition:.15s;}
+div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"]:hover {
+  background:rgba(255,255,255,.06); transform:translateY(-1px);}
+/* baris meta artikel ala referensi: waktu + pills */
+.mi-meta {display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+  margin-bottom:3px;}
+.mi-time {font-size:9.5px; color:#8ea0c9; letter-spacing:.4px;}
 /* garis kiri kartu artikel ikut level risiko (penanda .mi-risk di dalam) */
 .mi-risk {display:none;}
 div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"]:has(.mi-risk[data-r="Tinggi"]) {
@@ -511,13 +517,16 @@ for _r in range(0, len(names_grid), 4):
                         with st.container(border=True):
                             # Penanda level risiko (disembunyikan): dipakai
                             # CSS :has() untuk garis kiri kartu ikut warna
-                            # risiko, seperti contoh.
+                            # risiko, seperti referensi.
+                            _wkt = kmp.waktu_pendek(a.get("published_at"))
+                            _wkt_html = (f'<span class="mi-time">{_wkt}</span>'
+                                         if _wkt else "")
                             st.markdown(
                                 f'<div class="mi-risk" '
-                                f'data-r="{a.get("risiko", "")}"></div>',
+                                f'data-r="{a.get("risiko", "")}"></div>'
+                                f'<div class="mi-meta">{_wkt_html}'
+                                f'{kmp.pills_artikel(a)}</div>',
                                 unsafe_allow_html=True)
-                            st.markdown(kmp.pills_artikel(a),
-                                        unsafe_allow_html=True)
                             _key = ("dlg-" + hashlib.md5(
                                 a["url"].encode()).hexdigest()[:16])
                             if st.button(a.get("title") or "(tanpa judul)",
