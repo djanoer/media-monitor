@@ -95,9 +95,11 @@ div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[
   padding:7px 11px; margin:0 0 8px; transition:.15s;}
 div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"]:hover {
   background:rgba(255,255,255,.06); transform:translateY(-1px);}
-/* baris meta artikel: pills */
-.mi-meta {display:flex; align-items:center; gap:6px; flex-wrap:wrap;
-  margin-bottom:3px;}
+/* ringkasan 2 baris + badges di bawah judul (ala publish) */
+.mi-sum {color:#9ca3af; font-size:12px; line-height:1.5; margin:4px 0 2px;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  overflow:hidden;}
+.mi-badges {margin-top:6px;}
 /* garis kiri kartu artikel ikut level risiko (penanda .mi-risk di dalam) */
 .mi-risk {display:none;}
 div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"]:has(.mi-risk[data-r="Tinggi"]) {
@@ -155,7 +157,7 @@ button[data-testid="stExpandSidebarButton"]::after {content:"»";}
 .mm-skala-aktif {border:1px solid #fbbf24 !important;}
 /* judul sebagai st.button native -> dialog (modal) langsung di halaman
    yang sama, tanpa navigasi. Tombol judul hanya ada di kolom grid. */
-div[data-testid="stColumn"] div[data-testid="stButton"] {margin:4px 0 0;}
+div[data-testid="stColumn"] div[data-testid="stButton"] {margin:0;}
 div[data-testid="stColumn"] div[data-testid="stButton"] > button {
   background:transparent; border:none; box-shadow:none; padding:0;
   font-size:13px; font-weight:600; color:#e6ecff; line-height:1.45;
@@ -517,18 +519,26 @@ for _r in range(0, len(names_grid), 4):
                         with st.container(border=True):
                             # Penanda level risiko (disembunyikan): dipakai
                             # CSS :has() untuk garis kiri kartu ikut warna
-                            # risiko, seperti referensi.
+                            # risiko. Susunan isi ala publish: judul ->
+                            # ringkasan -> badges.
                             st.markdown(
                                 f'<div class="mi-risk" '
-                                f'data-r="{a.get("risiko", "")}"></div>'
-                                f'<div class="mi-meta">'
-                                f'{kmp.pills_artikel(a)}</div>',
+                                f'data-r="{a.get("risiko", "")}"></div>',
                                 unsafe_allow_html=True)
                             _key = ("dlg-" + hashlib.md5(
                                 a["url"].encode()).hexdigest()[:16])
                             if st.button(a.get("title") or "(tanpa judul)",
                                          key=_key):
                                 _dialog_artikel(a)
+                            _cup = kmp.cuplikan(a)
+                            if _cup:
+                                st.markdown(
+                                    f'<div class="mi-sum">{_cup}</div>',
+                                    unsafe_allow_html=True)
+                            st.markdown(
+                                f'<div class="mi-badges">'
+                                f'{kmp.pills_artikel(a)}</div>',
+                                unsafe_allow_html=True)
 
 # ---------- footer ----------
 st.markdown(
