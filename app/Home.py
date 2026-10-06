@@ -80,12 +80,20 @@ st.markdown("""
   border-top:1px solid rgba(255,255,255,.06);}
 .mm-section-title {font-size:17px; font-weight:700; color:#e6ecff;}
 .mm-section-sub {font-size:11.5px; color:#5b6b8c;}
-/* bingkai kartu kolom media: container(border=True) native */
+/* bingkai kartu utama per media */
 div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] {
   background:linear-gradient(180deg,#111d3c,#0e1730);
   border:1px solid rgba(90,130,255,.18); border-radius:12px;
   padding:10px 12px; margin-bottom:28px;}
+/* kartu artikel (border wrapper di dalam border wrapper): elegan,
+   ramping, ada jarak antar kartu. Selektor lebih spesifik + ditulis
+   setelah aturan kartu utama sehingga menang. */
+div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"] {
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.09); border-radius:10px;
+  padding:6px 12px; margin:0 0 10px;}
 /* header kartu minimalis: nama + pil count + 2 baris bar mini */
+.mi-hdr {margin-bottom:12px;}
 .mi-hdr-top {display:flex; align-items:center; gap:8px; padding:2px 2px 8px;}
 .mi-hdr-dot {width:9px; height:9px; border-radius:50%; display:inline-block;}
 .mi-hdr-name {font-size:15px; font-weight:700; color:#e6ecff;}
@@ -136,7 +144,7 @@ button[data-testid="stExpandSidebarButton"]::after {content:"»";}
 div[data-testid="stColumn"] div[data-testid="stButton"] {margin:4px 0 0;}
 div[data-testid="stColumn"] div[data-testid="stButton"] > button {
   background:transparent; border:none; box-shadow:none; padding:0;
-  font-size:13px; font-weight:600; color:#e6ecff; line-height:1.35;
+  font-size:12px; font-weight:600; color:#e6ecff; line-height:1.4;
   text-align:left; width:100%; min-height:0; height:auto; white-space:normal;}
 div[data-testid="stColumn"] div[data-testid="stButton"] > button:hover {
   color:#8fb0ff; text-decoration:underline;
@@ -145,10 +153,6 @@ div[data-testid="stColumn"] div[data-testid="stButton"] > button:focus {
   box-shadow:none !important; outline:none;}
 div[data-testid="stColumn"] div[data-testid="stButton"] > button:active {
   background:transparent; border:none;}
-.mi-sep {height:1px; background:rgba(255,255,255,.07); margin:10px 0 4px;}
-.mi-item-sum {font-size:11.5px; color:#8ea0c9; line-height:1.5; margin-top:4px;
-  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
-  overflow:hidden;}
 div[data-testid="stButton"] button {font-size:11px !important;
   padding:2px 8px !important; margin-top:-4px !important;}
 </style>
@@ -485,8 +489,8 @@ for _r in range(0, len(names_grid), 4):
     for _col, _name in zip(_cols, names_grid[_r:_r + 4]):
         with _col:
             # Satu kartu: header minimalis + daftar scroll native.
-            # Judul = st.button -> dialog (modal) langsung di halaman
-            # yang sama, tanpa navigasi.
+            # Tiap artikel = kartu sendiri berisi judul saja;
+            # klik judul -> dialog (modal) langsung di halaman sama.
             with st.container(border=True):
                 st.markdown(
                     kmp.header_kartu_minimalis(
@@ -494,22 +498,13 @@ for _r in range(0, len(names_grid), 4):
                         dist_pm.get(_name, {}), len(grid[_name])),
                     unsafe_allow_html=True)
                 with st.container(height=430):
-                    for _i, a in enumerate(grid[_name]):
-                        st.markdown(kmp.pills_artikel(a),
-                                    unsafe_allow_html=True)
-                        _key = ("dlg-" + hashlib.md5(
-                            a["url"].encode()).hexdigest()[:16])
-                        if st.button(a.get("title") or "(tanpa judul)",
-                                     key=_key):
-                            _dialog_artikel(a)
-                        _cup = kmp.cuplikan(a)
-                        if _cup:
-                            st.markdown(
-                                f'<div class="mi-item-sum">{_cup}</div>',
-                                unsafe_allow_html=True)
-                        if _i < len(grid[_name]) - 1:
-                            st.markdown('<div class="mi-sep"></div>',
-                                        unsafe_allow_html=True)
+                    for a in grid[_name]:
+                        with st.container(border=True):
+                            _key = ("dlg-" + hashlib.md5(
+                                a["url"].encode()).hexdigest()[:16])
+                            if st.button(a.get("title") or "(tanpa judul)",
+                                         key=_key):
+                                _dialog_artikel(a)
 
 # ---------- footer ----------
 st.markdown(
