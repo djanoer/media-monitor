@@ -27,7 +27,7 @@ sys.path.insert(0, ".")
 
 from src.common.config import load_media, load_settings
 from src.common.text import bersihkan_html
-from src.processing.llm_groq import ringkas_artikel
+from src.processing.llm_groq import RateLimitError, ringkas_artikel
 from src.processing.risiko import komponen_risiko
 from src.processing.sentimen import kata_berpengaruh
 from src.processing.verification import cek_headline
@@ -188,24 +188,43 @@ def _isi_ringkasan_ai(db_path, settings: dict) -> int:
         print("Ringkasan AI dilewati (GROQ_API_KEY tidak ada)", flush=True)
         return 0
     repository.migrate_ringkasan_ai(db_path)
+    maks_umur = int(cfg.get("maks_umur_jam", 24))
     antre = repository.artikel_tanpa_ringkasan_ai(
-        db_path, limit=int(cfg.get("maks_artikel", 30)))
+        db_path, limit=int(cfg.get("maks_artikel", 30)),
+        maks_umur_jam=maks_umur)
     if not antre:
         return 0
     jeda = float(cfg.get("jeda_detik", 3))
     model = cfg.get("model", "qwen/qwen3.8-27b")
     max_tokens = int(cfg.get("max_tokens", 300))
+    max_retry = int(cfg.get("retry_429", 3))
+    tunggu_awal = float(cfg.get("tunggu_awal_detik", 60))
+    tunggu_maks = float(cfg.get("tunggu_maks_detik", 300))
     total = len(antre)
     print(f"Mengisi ringkasan AI ({total} artikel)...", flush=True)
     n = 0
     for a in antre:
-        teks = ringkas_artikel(a.get("title") or "",
-                               a.get("isi_lengkap") or "",
-                               api_key, model=model, max_tokens=max_tokens)
+        # Percobaan bertahap: 429 -> tunggu (60, 120, 240 dtk...) lalu coba
+        # lagi artikel yg sama; gagal lain -> berhenti, lanjut ekspor berikut.
+        teks = None
+        tunggu = tunggu_awal
+        for attempt in range(max_retry + 1):
+            try:
+                teks = ringkas_artikel(
+                    a.get("title") or "", a.get("isi_lengkap") or "",
+                    api_key, model=model, max_tokens=max_tokens)
+                break
+            except RateLimitError:
+                if attempt >= max_retry:
+                    print(f"  429 {max_retry + 1}x beruntun, berhenti "
+                          f"({n}/{total})", flush=True)
+                    return n
+                print(f"  429 -> tunggu {tunggu:g} dtk lalu coba lagi",
+                      flush=True)
+                time.sleep(tunggu)
+                tunggu = min(tunggu * 2, tunggu_maks)
         if not teks:
-            print(f"  berhenti di {n}/{total} (gagal/kuota habis)",
-                  flush=True)
-            break  # gagal/kuota -> berhenti, coba lagi ekspor berikutnya
+            break
         repository.simpan_ringkasan_ai(db_path, a["url"], teks)
         n += 1
         if n % 5 == 0 or n == total:

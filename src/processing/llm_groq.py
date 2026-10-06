@@ -12,9 +12,16 @@ from __future__ import annotations
 
 import json
 import logging
+import urllib.error
 import urllib.request
 
 log = logging.getLogger("media_monitor")
+
+
+class RateLimitError(Exception):
+    """Groq mengembalikan HTTP 429 (rate limit). Layak dicoba lagi
+    setelah menunggu — berbeda dengan gagal lain (401/timeout) yang
+    langsung mengembalikan None."""
 
 API_URL = "https://api.groq.com/openai/v1/chat/completions"
 MODEL_DEFAULT = "qwen/qwen3.8-27b"
@@ -61,6 +68,11 @@ def ringkas_artikel(
             data = json.loads(resp.read().decode("utf-8"))
         teks = (data["choices"][0]["message"]["content"] or "").strip()
         return teks or None
-    except Exception as exc:  # timeout, 429, 401, JSON rusak, ...
+    except urllib.error.HTTPError as e:
+        if e.code == 429:
+            raise RateLimitError(f"HTTP 429: {e.reason}")
+        log.warning("ringkas_artikel gagal: HTTP %s", e.code)
+        return None
+    except Exception as exc:  # timeout, JSON rusak, ...
         log.warning("ringkas_artikel gagal: %s", exc)
         return None

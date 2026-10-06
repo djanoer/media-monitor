@@ -212,10 +212,17 @@ def test_pencatatan_run_dan_media(tmp_path):
 
 
 def test_ringkasan_ai_cache(tmp_path):
+    import datetime
     db = tmp_path / "test.db"
     repository.init_db(db)  # skema baru sudah mencakup ringkasan_ai
     assert repository.migrate_ringkasan_ai(db) is False  # idempoten
-    repository.insert_articles(db, [_artikel("u1"), _artikel("u2")])
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    arts = []
+    for u in ("u1", "u2"):
+        a = _artikel(u)
+        a["published_at"] = now
+        arts.append(a)
+    repository.insert_articles(db, arts)
     repository.simpan_isi(db, "u1", "Isi lengkap artikel satu.")
     repository.simpan_isi(db, "u2", "Isi lengkap artikel dua.")
     antre = repository.artikel_tanpa_ringkasan_ai(db, limit=10)

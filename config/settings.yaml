@@ -85,8 +85,12 @@ ringkasan_ai:
   aktif: true
   model: "qwen/qwen3.8-27b"
   maks_artikel: 30        # batas artikel diproses per ekspor
+  maks_umur_jam: 24       # hanya artikel 24 jam terakhir
   jeda_detik: 3           # jeda antar request (hindari rate limit)
   max_tokens: 300
+  retry_429: 3            # coba lagi tiap kena 429 (backoff bertahap)
+  tunggu_awal_detik: 60   # tunggu pertama; digandakan tiap gagal
+  tunggu_maks_detik: 300  # batas atas tunggu
 
 # Unduh isi lengkap artikel (Fase H): agar ringkasan dashboard bukan
 # sekadar judul. Dijalankan otomatis di akhir tiap siklus fetch.
