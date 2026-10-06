@@ -80,3 +80,29 @@ def test_ekspor_html_memuat_semua_seksi(tmp_path):
                     "data-ts", "Disclaimer"]:
         assert penanda in html, penanda
     assert stats["media"] == 2
+    # modal detail: tombol judul + data JSON + markup modal
+    assert 'class="tlink" data-i="0"' in html
+    assert 'id="adata"' in html and 'id="mback"' in html
+    assert "kenapa label ini?" in html and "Buka sumber" in html
+    import json as _json
+    data = _json.loads(html.split('id="adata">')[1].split("</script>")[0]
+                       .replace("<\\/", "</"))
+    assert len(data) == 8 and data[0]["media"] == "Tempo"  # limit 8/media
+    assert data[0]["ai"].startswith("Sentimen negatif")  # id DESC
+    assert "SKALA RISIKO" in data[0]["why"]
+
+
+def test_detail_artikel_tanpa_analisa(tmp_path):
+    db = tmp_path / "d.db"
+    repository.init_db(db)
+    repository.insert_articles(db, [{"url": "u9", "media": "tempo",
+                                     "title": "Judul", "summary": "",
+                                     "link": "u9",
+                                     "published_at": "2026-10-06T10:00:00Z"}])
+    a = {"url": "u9", "media": "tempo", "title": "Judul", "summary": "",
+         "isi_lengkap": "", "published_at": "2026-10-06T10:00:00Z",
+         "sentimen": None, "sentimen_skor": None,
+         "risiko": None, "risiko_skor": None}
+    d = eks._detail_artikel(a, {}, {}, "Tempo")
+    assert "belum dianalisa" in d["badge_r"]
+    assert d["isi"] == [] and d["title"] == "Judul"

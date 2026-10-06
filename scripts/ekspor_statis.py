@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import html as html_mod
+import json
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -23,7 +24,11 @@ sys.path.insert(0, ".")
 
 from src.common.config import load_media, load_settings
 from src.common.text import bersihkan_html
+from src.processing.risiko import komponen_risiko
+from src.processing.sentimen import kata_berpengaruh
+from src.processing.verification import cek_headline
 from src.storage import repository
+from app.komponen import mirip_judul, teks_ringkasan_mentah
 
 WITA = timezone(timedelta(hours=8))
 UTC = timezone.utc
@@ -94,6 +99,94 @@ def _badge_sentimen(sentimen) -> str:
             f'</span>')
 
 
+def _fmt_skor(v) -> str:
+    return f"{v:g}" if isinstance(v, (int, float)) else "-"
+
+
+def _detail_artikel(a: dict, settings: dict, verdicts: dict,
+                    display: str) -> dict:
+    """Bahan modal detail artikel (precompute, ala dialog lokal)."""
+    analisa_cfg = settings.get("analisa", {})
+    ringkas = teks_ringkasan_mentah(a, max_len=2000)
+    kata = kata_berpengaruh(
+        a.get("title") or "", ringkas,
+        bobot_judul=float(analisa_cfg.get("bobot_judul", 2.0)))
+    sent = a.get("sentimen") or "netral"
+    if sent == "positif" and kata["positif"]:
+        alasan = ("kata positif "
+                  + ", ".join(f"'{w}'" for w in kata["positif"][:5])
+                  + " lebih dominan")
+    elif sent == "negatif" and kata["negatif"]:
+        alasan = ("kata negatif "
+                  + ", ".join(f"'{w}'" for w in kata["negatif"][:5])
+                  + " lebih dominan")
+    else:
+        alasan = "tidak ada kata sentimen yang menonjol"
+    penanda = settings.get("verification", {}).get("penanda_bombastis", [])
+    flags = cek_headline(a.get("title") or "", ringkas, penanda)
+    komp = komponen_risiko(sent, "bombastis" in flags,
+                           verdicts.get(a.get("url"), []), analisa_cfg)
+    rincian = "; ".join(
+        f"{ket} {'+' if d >= 0 else '−'}{abs(d):g}" for ket, d in komp)
+    ai = (f"Sentimen {sent} (skor {_fmt_skor(a.get('sentimen_skor'))}): "
+          f"{alasan}. Risiko {a.get('risiko') or '-'} "
+          f"(skor {_fmt_skor(a.get('risiko_skor'))}/100): {rincian}.")
+
+    t_tinggi = float(analisa_cfg.get("ambang_risiko_tinggi", 65))
+    t_sedang = float(analisa_cfg.get("ambang_risiko_sedang", 35))
+    lvl = a.get("risiko") or "Rendah"
+    skala_r = []
+    for nama, lo, hi, ket in [
+            ("Rendah", 0, t_sedang - 1,
+             "Minim potensi dampak buruk; umumnya kabar biasa/harian."),
+            ("Sedang", t_sedang, t_tinggi - 1,
+             "Berpotensi menimbulkan keresahan atau dampak sedang."),
+            ("Tinggi", t_tinggi, 100,
+             "Isu berbahaya/urgent; atau klaim belum terverifikasi + "
+             "headline bombastis.")]:
+        w = WARNA_RISIKO.get(nama, "#9aa5c4")
+        on = ' style="border-color:%s"' % w if nama == lvl else ""
+        skala_r.append(
+            f'<div class="skala{" on" if nama == lvl else ""}"{on}>'
+            f'<span class="bd" style="background:{w}22;color:{w};'
+            f'border:1px solid {w}55">{nama}</span> '
+            f'Skor {lo:g}–{hi:g}. {_esc(ket)}</div>')
+    amb = float(analisa_cfg.get("ambang_sentimen", 2.0))
+    skala_s = []
+    for nama, ket in [
+            ("positif", f"Nuansa baik lebih dominan. Skor ≥ +{amb:g}."),
+            ("netral", f"Isi berimbang/objektif. Skor antara −{amb:g} "
+                       f"sampai +{amb:g}."),
+            ("negatif", f"Nuansa buruk lebih dominan. Skor ≤ −{amb:g}.")]:
+        w = WARNA_SENTIMEN.get(nama, "#9aa5c4")
+        on = ' style="border-color:%s"' % w if nama == sent else ""
+        skala_s.append(
+            f'<div class="skala{" on" if nama == sent else ""}"{on}>'
+            f'<span class="bd" style="background:{w}22;color:{w};'
+            f'border:1px solid {w}55">{nama.capitalize()}</span> '
+            f'{_esc(ket)}</div>')
+    why = ('<b>🛡 SKALA RISIKO (0–100)</b>' + "".join(skala_r)
+           + '<b>💬 SKALA SENTIMEN</b>' + "".join(skala_s))
+
+    isi = (a.get("isi_lengkap") or "").strip()
+    paragraf = [p.strip() for p in isi.split("\n\n") if p.strip()]
+    if not paragraf:
+        s = bersihkan_html(a.get("summary") or "").strip()
+        if s and not mirip_judul(s, a.get("title")):
+            paragraf = [s]
+    return {
+        "media": display,
+        "url": a.get("url") or "",
+        "title": a.get("title") or "(tanpa judul)",
+        "badge_r": _badge_risiko(a.get("risiko"), a.get("risiko_skor")),
+        "badge_s": _badge_sentimen(a.get("sentimen")),
+        "ai": ai,
+        "why": why,
+        "pub": a.get("published_at") or "",
+        "isi": paragraf,
+    }
+
+
 def _sparkline(harian: list[dict], w: int = 280, h: int = 56) -> str:
     """Sparkline SVG dari skor minat harian (rata-rata semua keyword)."""
     by_tgl: dict[str, list[float]] = {}
@@ -154,15 +247,15 @@ def _metrik(db_path, media_list: list[dict]) -> dict:
     }
 
 
-def _kartu_media(m: dict, arts: list[dict]) -> str:
-    items = []
-    for a in arts:
+def _kartu_media(m: dict, items: list[tuple[int, dict]]) -> str:
+    rows = []
+    for idx, a in items:
         wr = WARNA_RISIKO.get(a.get("risiko"), "#2a3352") \
             if a.get("risiko_skor") is not None else "#2a3352"
-        items.append(
+        rows.append(
             f'<div class="item" style="border-left:3px solid {wr}">'
-            f'<a class="t" href="{_esc(a["url"])}" target="_blank" '
-            f'rel="noopener">{_esc(a["title"])}</a>'
+            f'<button class="tlink" data-i="{idx}">'
+            f'{_esc(a["title"])}</button>'
             f'<div class="sum">{_esc(_ringkas(a.get("summary")))}</div>'
             '<div class="bds">'
             f'{_badge_risiko(a.get("risiko"), a.get("risiko_skor"))}'
@@ -173,8 +266,8 @@ def _kartu_media(m: dict, arts: list[dict]) -> str:
         f'<section class="card">'
         f'<header><span class="dot" style="background:{m["color"]}"></span>'
         f'<b>{_esc(m["display"])}</b>'
-        f'<span class="cnt">{len(arts)} berita</span></header>'
-        f'<div class="items">{"".join(items) or "<div class=muted>kosong</div>"}</div>'
+        f'<span class="cnt">{len(items)} berita</span></header>'
+        f'<div class="items">{"".join(rows) or "<div class=muted>kosong</div>"}</div>'
         f'</section>'
     )
 
@@ -297,6 +390,26 @@ h2.sec::before{content:"";width:4px;height:1.2em;background:linear-gradient(#4da
 .bar .fill{background:#4dabf7;border-radius:4px;height:8px}
 .bar b{width:36px;text-align:right}
 ul{margin:4px 0;padding-left:18px;font-size:.85rem;color:#c6d2e8}
+.tlink{background:none;border:none;padding:0;font:inherit;font-weight:600;color:#e6ebf5;text-align:left;cursor:pointer;font-size:.92rem;line-height:1.4}
+.tlink:hover{color:#7dd3fc}
+.mback{position:fixed;inset:0;background:#04060cd9;z-index:50;display:none;align-items:center;justify-content:center;padding:20px}
+.mback.open{display:flex}
+.modal{background:#131a30;border:1px solid #2a3352;border-radius:16px;max-width:760px;width:100%;max-height:88vh;overflow-y:auto;padding:22px 26px;position:relative}
+.mx{position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:8px;border:1px solid #2a3352;background:#1a2240;color:#9ca3af;font-size:1rem;cursor:pointer}
+.mx:hover{color:#e6ebf5;border-color:#3b4a7a}
+.mhead{font-size:.9rem;color:#9ca3af;margin-bottom:10px;padding-right:36px}
+.mhead b{color:#e6ebf5}
+.mhead a{color:#7dd3fc;text-decoration:none;font-weight:600}
+.mbadges{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.mwhy{background:none;border:none;color:#7dd3fc;font-size:.85rem;cursor:pointer;padding:4px 0;font-weight:600}
+.mwhybody{margin:8px 0}
+.mtitle{font-size:1.4rem;font-weight:700;margin:10px 0;line-height:1.35}
+.mai{background:#1a2240;border:1px solid #2a3a66;border-radius:10px;padding:12px 14px;margin:12px 0;font-size:.9rem;line-height:1.6;color:#c6d2e8}
+.mpub{color:#6b7280;font-size:.8rem;margin-bottom:12px}
+.misi p{margin:0 0 14px;line-height:1.7;color:#dbe3f5}
+.skala{border:1px solid #2a3352;border-radius:8px;padding:8px 12px;margin:6px 0;font-size:.85rem;color:#c6d2e8}
+.skala.on{border-width:2px}
+.skala b{color:#e6ebf5}
 footer{margin-top:36px;padding-top:16px;border-top:1px solid #1e2745;color:#6b7280;font-size:.8rem;text-align:center}
 a{color:#7dd3fc}
 """
@@ -372,11 +485,20 @@ def ekspor(db_path, out_path: Path, settings: dict,
         f'{_bar([(m["rr"], WARNA_RISIKO["Rendah"]), (m["rs"], WARNA_RISIKO["Sedang"]), (m["rt"], WARNA_RISIKO["Tinggi"])], cls="dbar")}'
         f'</div></div>')
 
-    cards = "".join(
-        _kartu_media(x, per_media.get(x["name"], []))
-        for x in media_list
-    )
+    verdicts = repository.get_verdicts_artikel(db_path)
+    disp = {x["name"]: x["display"] for x in media_list}
+    details: list[dict] = []
+    kartu = []
+    for x in media_list:
+        items = []
+        for a in per_media.get(x["name"], []):
+            details.append(_detail_artikel(
+                a, settings, verdicts, disp.get(x["name"], x["name"])))
+            items.append((len(details) - 1, a))
+        kartu.append(_kartu_media(x, items))
+    cards = "".join(kartu)
     seksis = "".join(_seksi_topik(db_path, t) for t in topiks)
+    adata = json.dumps(details, ensure_ascii=False).replace("</", "<\\/")
 
     html = f"""<!DOCTYPE html>
 <html lang="id">
@@ -405,6 +527,18 @@ def ekspor(db_path, out_path: Path, settings: dict,
 {seksis or '<div class="muted">Belum ada data respons publik.</div>'}
 <footer>{_esc(DISCLAIMER)}</footer>
 </div>
+<div class="mback" id="mback"><div class="modal" role="dialog" aria-modal="true">
+<button class="mx" id="mx" aria-label="Tutup">✕</button>
+<div class="mhead"><b id="m-media"></b><span> · — · </span><a id="m-src" href="#" target="_blank" rel="noopener">Buka sumber ↗</a></div>
+<div class="mbadges" id="m-badges"></div>
+<button class="mwhy" id="mwhy">❓ kenapa label ini?</button>
+<div class="mwhybody" id="mwhybody" hidden></div>
+<div class="mtitle" id="m-title"></div>
+<div class="mai" id="m-ai"></div>
+<div class="mpub" id="m-pub"></div>
+<div class="misi" id="m-isi"></div>
+</div></div>
+<script type="application/json" id="adata">{adata}</script>
 <script>
 (function(){{
 document.querySelectorAll('[data-ts]').forEach(function(el){{
@@ -417,6 +551,31 @@ if(m<60)return m+' mnt lalu';var h=Math.floor(m/60);
 if(h<24)return h+' jam lalu';return Math.floor(h/24)+' hari lalu';}}
 tick();setInterval(tick,60000);
 }});
+}})();
+// ---- modal detail artikel ----
+(function(){{
+var DATA=JSON.parse(document.getElementById('adata').textContent);
+var back=document.getElementById('mback');
+function esc(s){{var d=document.createElement('div');d.textContent=s;return d.innerHTML;}}
+function openM(i){{var d=DATA[i];if(!d)return;
+document.getElementById('m-media').textContent=d.media;
+var src=document.getElementById('m-src');src.href=d.url;
+document.getElementById('m-badges').innerHTML=d.badge_r+' '+d.badge_s;
+document.getElementById('m-title').textContent=d.title;
+document.getElementById('m-ai').innerHTML='<b>AI:</b> '+esc(d.ai);
+document.getElementById('mwhybody').innerHTML=d.why;
+document.getElementById('mwhybody').hidden=true;
+document.getElementById('m-pub').textContent=d.pub?('Dipublikasikan: '+d.pub):'';
+document.getElementById('m-isi').innerHTML=d.isi.map(function(p){{return '<p>'+esc(p)+'</p>';}}).join('');
+back.classList.add('open');document.body.style.overflow='hidden';}}
+function closeM(){{back.classList.remove('open');document.body.style.overflow='';}}
+document.querySelectorAll('.tlink').forEach(function(b){{
+b.addEventListener('click',function(){{openM(+b.dataset.i);}});}});
+document.getElementById('mx').addEventListener('click',closeM);
+document.getElementById('mwhy').addEventListener('click',function(){{
+var b=document.getElementById('mwhybody');b.hidden=!b.hidden;}});
+back.addEventListener('click',function(e){{if(e.target===back)closeM();}});
+document.addEventListener('keydown',function(e){{if(e.key==='Escape')closeM();}});
 }})();
 </script>
 </body></html>
