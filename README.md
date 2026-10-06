@@ -49,11 +49,22 @@ python -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
 ```
 
-**3. (Opsional) YouTube API key** — hanya untuk data video di Respons Publik. Tanpa ini, bagian YouTube dilewati dan Google Trends tetap jalan:
+**3. (Opsional) YouTube API key** — hanya untuk data video di Respons Publik. Tanpa ini, bagian YouTube dilewati dan Google Trends tetap jalan. Dua cara (pilih salah satu):
+
 ```bat
+:: Cara A: environment variable (laptop utama)
 setx YOUTUBE_API_KEY "isi-dengan-key-kamu"
 ```
-Buat key di [Google Cloud Console](https://console.cloud.google.com/) → aktifkan *YouTube Data API v3* → Credentials → API key. Tutup-buka terminal setelah `setx`.
+Tutup-buka terminal setelah `setx`.
+
+```bat
+:: Cara B: file .env (praktis untuk laptop kedua)
+copy .env.example .env
+:: lalu edit .env, isi YOUTUBE_API_KEY dengan key aslimu
+```
+File `.env` tidak ikut ke git (sudah di `.gitignore`).
+
+Buat key di [Google Cloud Console](https://console.cloud.google.com/) → aktifkan *YouTube Data API v3* → Credentials → API key.
 
 **4. Jalankan:** double-click `all-in-one.bat`. Saat pertama kali DB masih kosong — scheduler mengisi berita tiap 1 jam; halaman Respons Publik terisi setelah sync pertama selesai (±4 menit).
 

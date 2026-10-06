@@ -14,3 +14,5 @@ streamlit==1.64.0
 torch==2.14.0+cpu
 # Fase D: Google Trends (tidak ada API resmi; pytrends = standar komunitas)
 pytrends==4.9.2
+# Dukungan opsional file .env untuk API key (laptop kedua, dsb.)
+python-dotenv==1.0.1
