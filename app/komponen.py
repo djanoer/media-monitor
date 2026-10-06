@@ -128,47 +128,52 @@ def cuplikan(r: dict, max_len: int = 140) -> str:
     return html_mod.escape(teks_ringkasan_mentah(r, max_len))
 
 
-def kartu_media_grid(
-    name: str, display_name: str, color: str,
-    dist: dict, arts: list[dict],
+def _segmen_bar(dist: dict, urutan: list[tuple[str, str]]) -> str:
+    """Segmen bar proporsional tipis. urutan: list (key, warna)."""
+    tot = sum(dist.get(k, 0) for k, _ in urutan)
+    if tot <= 0:
+        return ""
+    return "".join(
+        f'<span style="width:{100 * dist.get(k, 0) / tot:.1f}%;'
+        f'background:{w}"></span>'
+        for k, w in urutan if dist.get(k, 0) > 0
+    )
+
+
+def header_kartu_minimalis(
+    display_name: str, color: str, dist: dict, n_arts: int,
 ) -> str:
-    """Satu kartu kolom media utuh (satu blok HTML).
+    """Header kartu media gaya minimalis (satu blok HTML seimbang).
 
-    Header (dot + nama + count) dan mini-bar sentimen/risiko tetap di
-    atas; daftar artikel scroll mandiri (.mi-card-items). Judul berupa
-    hyperlink real (?art=<url>) yang membuka dialog detail.
+    Nama + pil count, lalu dua baris ringkas SENTIMEN (P/N/NG) dan
+    RISIKO (R/S/T) lengkap dengan mini-bar segmen. Daftar artikel
+    di-render pemanggil sebagai st.button native per judul di dalam
+    st.container scroll, sehingga klik membuka dialog (modal) langsung
+    di halaman yang sama tanpa navigasi.
     """
-    from urllib.parse import quote_plus
-
     ds = (dist or {}).get("sentimen", {})
     dr = (dist or {}).get("risiko", {})
-    tot_s, tot_r = sum(ds.values()), sum(dr.values())
     nama = html_mod.escape(display_name)
-    items = []
-    for a in arts:
-        col = WARNA_RISIKO.get(a.get("risiko"), "#8ea0c9")
-        judul = html_mod.escape(a.get("title") or "(tanpa judul)")
-        href = f"?art={quote_plus(a['url'])}#card-{name}"
-        cuplik = cuplikan(a)
-        sum_html = (f'<div class="mi-item-sum">{cuplik}</div>'
-                    if cuplik else "")
-        items.append(
-            f'<div class="mi-item" style="border-left-color:{col}">'
-            f'{pills_artikel(a)}'
-            f'<a class="mi-judul" href="{href}">{judul}</a>'
-            f'{sum_html}</div>')
+    seg_s = _segmen_bar(ds, [("positif", "#34d399"), ("netral", "#b6c6f0"),
+                             ("negatif", "#fb7185")])
+    seg_r = _segmen_bar(dr, [("Rendah", "#34d399"), ("Sedang", "#fbbf24"),
+                             ("Tinggi", "#fb7185")])
     return (
-        f'<div class="mi-card" id="card-{name}">'
-        f'<div class="mi-gridhead">'
-        f'<span style="width:9px;height:9px;border-radius:50%;'
-        f'display:inline-block;background:{color};'
+        f'<div class="mi-hdr">'
+        f'<div class="mi-hdr-top">'
+        f'<span class="mi-hdr-dot" style="background:{color};'
         f'box-shadow:0 0 8px {color}"></span>'
-        f'<span class="mi-gridname">{nama}</span>'
-        f'<span class="mi-gridcount" style="background:{color}">'
-        f'{len(arts)}</span></div>'
-        f'{bar_agregat("Sentimen", tot_s, [("positif", ds.get("positif", 0), "#34d399"), ("netral", ds.get("netral", 0), "#b6c6f0"), ("negatif", ds.get("negatif", 0), "#fb7185")])}'
-        f'{bar_agregat("Risiko", tot_r, [("Rendah", dr.get("Rendah", 0), "#34d399"), ("Sedang", dr.get("Sedang", 0), "#fbbf24"), ("Tinggi", dr.get("Tinggi", 0), "#fb7185")])}'
-        f'<div class="mi-card-items">{"".join(items)}</div>'
+        f'<span class="mi-hdr-name">{nama}</span>'
+        f'<span class="mi-hdr-count" style="background:{color}">'
+        f'{n_arts}</span></div>'
+        f'<div class="mi-hdr-row"><span>SENTIMEN</span>'
+        f'<span class="mi-hdr-vals">P {ds.get("positif", 0)} · '
+        f'N {ds.get("netral", 0)} · NG {ds.get("negatif", 0)}</span></div>'
+        f'<div class="mi-hdr-bar">{seg_s}</div>'
+        f'<div class="mi-hdr-row"><span>RISIKO</span>'
+        f'<span class="mi-hdr-vals">R {dr.get("Rendah", 0)} · '
+        f'S {dr.get("Sedang", 0)} · T {dr.get("Tinggi", 0)}</span></div>'
+        f'<div class="mi-hdr-bar">{seg_r}</div>'
         f'</div>'
     )
 

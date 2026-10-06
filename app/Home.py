@@ -9,6 +9,7 @@ app/komponen); tidak ada logika bisnis di sini.
 from __future__ import annotations
 
 import html as html_mod
+import hashlib
 import pathlib
 import sys
 
@@ -79,15 +80,23 @@ st.markdown("""
   border-top:1px solid rgba(255,255,255,.06);}
 .mm-section-title {font-size:17px; font-weight:700; color:#e6ecff;}
 .mm-section-sub {font-size:11.5px; color:#5b6b8c;}
-.mi-card {border:1px solid rgba(90,130,255,.18); border-radius:12px;
-  background:linear-gradient(180deg, #111d3c, #0e1730);
-  padding:10px 12px; height:640px; display:flex; flex-direction:column;
-  margin-bottom:28px;}
-.mi-card-items {overflow-y:auto; flex:1; min-height:0;
-  scrollbar-width:thin; scrollbar-color:rgba(90,130,255,.4) transparent;}
-.mi-card-items::-webkit-scrollbar {width:6px;}
-.mi-card-items::-webkit-scrollbar-thumb {
-  background:rgba(90,130,255,.4); border-radius:3px;}
+/* bingkai kartu kolom media: container(border=True) native */
+div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] {
+  background:linear-gradient(180deg,#111d3c,#0e1730);
+  border:1px solid rgba(90,130,255,.18); border-radius:12px;
+  padding:10px 12px; margin-bottom:28px;}
+/* header kartu minimalis: nama + pil count + 2 baris bar mini */
+.mi-hdr-top {display:flex; align-items:center; gap:8px; padding:2px 2px 8px;}
+.mi-hdr-dot {width:9px; height:9px; border-radius:50%; display:inline-block;}
+.mi-hdr-name {font-size:15px; font-weight:700; color:#e6ecff;}
+.mi-hdr-count {margin-left:auto; font-size:11px; font-weight:700;
+  color:#070c18; border-radius:20px; padding:2px 10px;}
+.mi-hdr-row {display:flex; justify-content:space-between; font-size:10px;
+  color:#8ea0c9; letter-spacing:.6px; margin-top:7px;}
+.mi-hdr-vals {color:#b6c6f0; letter-spacing:0;}
+.mi-hdr-bar {display:flex; height:5px; border-radius:3px; overflow:hidden;
+  background:rgba(255,255,255,.07); margin-top:4px;}
+.mi-hdr-bar span {display:block; height:100%;}
 /* Tombol expand/collapse sidebar: font ikon Material kadang gagal dimuat
    sehingga muncul teks ligature "keyboard_double_arrow_right".
    Terverifikasi di bundle Streamlit 1.65:
@@ -122,22 +131,21 @@ button[data-testid="stExpandSidebarButton"]::after {content:"»";}
   border:1px solid rgba(255,255,255,.08); border-radius:10px;
   padding:8px 12px; margin:6px 0; color:#dbe4ff; font-size:13px;}
 .mm-skala-aktif {border:1px solid #fbbf24 !important;}
-.mi-gridhead {display:flex; align-items:center; gap:8px;
-  padding:6px 2px 12px; border-bottom:1px solid rgba(255,255,255,.08);
-  margin-bottom:4px;}
-.mi-gridname {font-size:15px; font-weight:700; color:#e6ecff;
-  letter-spacing:.2px;}
-.mi-gridcount {margin-left:auto; font-size:11px; font-weight:700; color:#070c18;
-  border-radius:20px; padding:2px 10px;}
-/* item berita di dalam kartu kolom */
-.mi-item {background:rgba(255,255,255,.025); border-radius:9px;
-  border-left:3px solid #8ea0c9; padding:8px 12px; margin:8px 0;}
-.mi-item-title {font-size:13px; font-weight:600; color:#e6ecff;
-  line-height:1.35; margin-top:6px;}
-/* judul sebagai hyperlink real -> buka dialog detail */
-a.mi-judul {font-size:13px; font-weight:600; color:#e6ecff;
-  line-height:1.35; margin-top:6px; display:block; text-decoration:none;}
-a.mi-judul:hover {color:#8fb0ff; text-decoration:underline;}
+/* judul sebagai st.button native -> dialog (modal) langsung di halaman
+   yang sama, tanpa navigasi. Tombol judul hanya ada di kolom grid. */
+div[data-testid="stColumn"] div[data-testid="stButton"] {margin:4px 0 0;}
+div[data-testid="stColumn"] div[data-testid="stButton"] > button {
+  background:transparent; border:none; box-shadow:none; padding:0;
+  font-size:13px; font-weight:600; color:#e6ecff; line-height:1.35;
+  text-align:left; width:100%; min-height:0; height:auto; white-space:normal;}
+div[data-testid="stColumn"] div[data-testid="stButton"] > button:hover {
+  color:#8fb0ff; text-decoration:underline;
+  background:transparent; border:none; box-shadow:none;}
+div[data-testid="stColumn"] div[data-testid="stButton"] > button:focus {
+  box-shadow:none !important; outline:none;}
+div[data-testid="stColumn"] div[data-testid="stButton"] > button:active {
+  background:transparent; border:none;}
+.mi-sep {height:1px; background:rgba(255,255,255,.07); margin:10px 0 4px;}
 .mi-item-sum {font-size:11.5px; color:#8ea0c9; line-height:1.5; margin-top:4px;
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
   overflow:hidden;}
@@ -472,26 +480,36 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Dialog detail via hyperlink judul (?art=<url>): buka saat param ada,
-# bersihkan setelah ditutup agar refresh tak membuka lagi.
-_art_param = st.query_params.get("art")
-if _art_param:
-    _target = next(
-        (a for arts in grid.values() for a in arts if a["url"] == _art_param),
-        None)
-    if _target is not None:
-        _dialog_artikel(_target)
-    st.query_params.clear()
-
 for _r in range(0, len(names_grid), 4):
     _cols = st.columns(4)
     for _col, _name in zip(_cols, names_grid[_r:_r + 4]):
         with _col:
-            st.markdown(
-                kmp.kartu_media_grid(
-                    _name, display[_name], warna[_name],
-                    dist_pm.get(_name, {}), grid[_name]),
-                unsafe_allow_html=True)
+            # Satu kartu: header minimalis + daftar scroll native.
+            # Judul = st.button -> dialog (modal) langsung di halaman
+            # yang sama, tanpa navigasi.
+            with st.container(border=True):
+                st.markdown(
+                    kmp.header_kartu_minimalis(
+                        display[_name], warna[_name],
+                        dist_pm.get(_name, {}), len(grid[_name])),
+                    unsafe_allow_html=True)
+                with st.container(height=430):
+                    for _i, a in enumerate(grid[_name]):
+                        st.markdown(kmp.pills_artikel(a),
+                                    unsafe_allow_html=True)
+                        _key = ("dlg-" + hashlib.md5(
+                            a["url"].encode()).hexdigest()[:16])
+                        if st.button(a.get("title") or "(tanpa judul)",
+                                     key=_key):
+                            _dialog_artikel(a)
+                        _cup = kmp.cuplikan(a)
+                        if _cup:
+                            st.markdown(
+                                f'<div class="mi-item-sum">{_cup}</div>',
+                                unsafe_allow_html=True)
+                        if _i < len(grid[_name]) - 1:
+                            st.markdown('<div class="mi-sep"></div>',
+                                        unsafe_allow_html=True)
 
 # ---------- footer ----------
 st.markdown(

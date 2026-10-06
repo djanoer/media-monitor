@@ -126,19 +126,18 @@ def test_get_artikel_per_media(tmp_path):
     assert "risiko" in g["kompas"][0]
 
 
-def test_kartu_media_grid():
+def test_header_kartu_minimalis():
     from app import komponen as kmp
-    html = kmp.kartu_media_grid(
-        "kompas", "Kompas", "#4285f4",
-        {"sentimen": {"negatif": 2}, "risiko": {"Tinggi": 2}},
-        [{"url": "u1", "title": "Judul berita", "summary": "Isi ringkasan",
-          "sentimen": "negatif", "risiko": "Tinggi"}])
-    assert 'id="card-kompas"' in html
-    assert "Judul berita" in html
-    assert "#fb7185" in html  # border + badge Tinggi
-    assert "negatif" in html
-    assert "?art=u1#card-kompas" in html  # judul hyperlink -> dialog
-    assert "mi-card-items" in html  # area scroll mandiri
+    html = kmp.header_kartu_minimalis(
+        "Kompas", "#4285f4",
+        {"sentimen": {"positif": 1, "netral": 2, "negatif": 3},
+         "risiko": {"Rendah": 1, "Sedang": 2, "Tinggi": 3}}, 6)
+    assert "Kompas" in html
+    assert ">6<" in html  # pil count
+    assert "P 1 · N 2 · NG 3" in html  # ringkas sentimen
+    assert "R 1 · S 2 · T 3" in html  # ringkas risiko
+    assert "?art=" not in html  # tanpa trik hyperlink
+    assert html.count("<div") == html.count("</div>")  # seimbang
 
 
 def test_kata_berpengaruh_negatif():
