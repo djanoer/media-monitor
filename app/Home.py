@@ -37,11 +37,52 @@ st.markdown("""
     radial-gradient(700px 500px at 50% 100%, rgba(167,139,250,.08), transparent);}
 .stApp, .stApp * {font-family:"Segoe UI", system-ui, -apple-system, Roboto,
   "Helvetica Neue", Arial, sans-serif;}
-/* kartu kolom media: satu blok HTML milik sendiri (tidak bergantung
-   testid internal Streamlit) — header tetap, isi scroll mandiri */
+/* ===== HERO header elegan ===== */
+.mm-hero {display:flex; justify-content:space-between; align-items:center;
+  flex-wrap:wrap; gap:12px; padding:20px 4px 16px;}
+.mm-hero-left {display:flex; align-items:center; gap:14px;}
+.mm-live-dot {width:14px; height:14px; border-radius:50%; background:#34d399;
+  box-shadow:0 0 14px #34d399; animation:mm-pulse 2.2s ease-in-out infinite;
+  flex-shrink:0;}
+.mm-live-dot.mm-off {background:#5b6b8c; box-shadow:none; animation:none;}
+@keyframes mm-pulse {0%,100%{opacity:1; transform:scale(1);}
+  50%{opacity:.55; transform:scale(.85);}}
+.mm-hero-title {font-size:31px; font-weight:800; color:#f2f5ff;
+  letter-spacing:.3px; line-height:1.1;}
+.mm-hero-sub {font-size:10.5px; color:#8ea0c9; letter-spacing:2.6px;
+  margin-top:4px;}
+.mm-hero-right {text-align:right;}
+.mm-hero-upd-label {font-size:9.5px; color:#5b6b8c; letter-spacing:1.6px;
+  text-transform:uppercase;}
+.mm-hero-upd {font-size:13px; color:#e6ecff; font-weight:600; margin-top:2px;}
+.mm-hero-health {font-size:11.5px; color:#8ea0c9; margin-top:5px;
+  display:flex; align-items:center; gap:6px; justify-content:flex-end;}
+/* ===== kartu KPI ===== */
+.mm-kpis {display:grid; grid-template-columns:repeat(3, 1fr); gap:14px;
+  margin:4px 0 6px;}
+@media (max-width: 900px) {.mm-kpis {grid-template-columns:1fr;}}
+.mm-kpi {background:linear-gradient(180deg, #141f42, #0e1730);
+  border:1px solid rgba(90,130,255,.18); border-radius:14px;
+  padding:16px 18px 14px;}
+.mm-kpi-num {font-size:33px; font-weight:800; color:#f2f5ff; line-height:1;}
+.mm-kpi-den {font-size:15px; color:#8ea0c9; font-weight:600;}
+.mm-kpi-label {font-size:10px; color:#8ea0c9; letter-spacing:1.8px;
+  margin-top:6px;}
+.mm-kpi-sub {font-size:12px; color:#8ea0c9; margin-top:9px;}
+.mm-kpi-sub b {color:#dbe4ff;}
+.mm-kpi-bar {display:flex; height:5px; border-radius:3px; overflow:hidden;
+  margin-top:9px; background:rgba(255,255,255,.06);}
+.mm-kpi-bar span {display:block; height:100%;}
+/* ===== judul seksi ===== */
+.mm-section {display:flex; align-items:baseline; gap:10px;
+  margin:22px 0 12px; padding-top:6px;
+  border-top:1px solid rgba(255,255,255,.06);}
+.mm-section-title {font-size:17px; font-weight:700; color:#e6ecff;}
+.mm-section-sub {font-size:11.5px; color:#5b6b8c;}
 .mi-card {border:1px solid rgba(90,130,255,.18); border-radius:12px;
   background:linear-gradient(180deg, #111d3c, #0e1730);
-  padding:10px 12px; height:640px; display:flex; flex-direction:column;}
+  padding:10px 12px; height:640px; display:flex; flex-direction:column;
+  margin-bottom:28px;}
 .mi-card-items {overflow-y:auto; flex:1; min-height:0;
   scrollbar-width:thin; scrollbar-color:rgba(90,130,255,.4) transparent;}
 .mi-card-items::-webkit-scrollbar {width:6px;}
@@ -65,6 +106,18 @@ button[data-testid="stExpandSidebarButton"]::after {content:"»";}
 .mm-penjelasan {background:rgba(79,140,255,.10);
   border:1px solid rgba(90,130,255,.25); border-radius:10px;
   padding:10px 12px; margin:8px 0; color:#dbe4ff; font-size:13px;}
+/* dialog detail ala modal referensi */
+.mm-dlg-head {font-size:14px; color:#e6ecff; margin-bottom:10px;}
+.mm-dlg-sep {color:#5b6b8c;}
+.mm-dlg-src {color:#7aa5ff; text-decoration:none; font-weight:600;}
+.mm-dlg-src:hover {text-decoration:underline;}
+.mm-dlg-title {font-size:22px; font-weight:800; color:#f2f5ff;
+  line-height:1.3; margin:12px 0 4px;}
+/* footer disclaimer ala referensi */
+.mm-footer {margin-top:36px; padding:18px 12px 10px;
+  border-top:1px solid rgba(255,255,255,.08);
+  color:#5b6b8c; font-size:11.5px; text-align:center; line-height:1.7;}
+.mm-footer b {color:#8ea0c9;}
 .mm-skala {background:rgba(255,255,255,.03);
   border:1px solid rgba(255,255,255,.08); border-radius:10px;
   padding:8px 12px; margin:6px 0; color:#dbe4ff; font-size:13px;}
@@ -96,9 +149,6 @@ div[data-testid="stButton"] button {font-size:11px !important;
 settings = load_settings()
 db_path = ROOT / settings["storage"]["db_path"]
 
-st.title("Media Monitor")
-st.caption("Pantau media per kolom — klik Detail untuk ringkasan + alasan skor")
-
 if not db_path.exists():
     st.warning(
         "Database belum ada. Jalankan dulu run-all.bat, lalu refresh halaman ini."
@@ -115,37 +165,97 @@ display = {m["name"]: m["display"] for m in media_list}
 warna = {m["name"]: m.get("color", "#8ea0c9") for m in media_list}
 names = [m["name"] for m in media_list]
 
-# ---------- bar status & metrik ----------
+# ---------- hero + kartu KPI ----------
 last = repository.get_last_run(db_path)
 acuan = (last or {}).get("finished_at") or (last or {}).get("started_at")
 menit = fmt.menit_sejak(acuan)
 sehat = menit is not None and menit <= 90
-
-if menit is None:
-    st.info("Belum ada siklus fetch yang tercatat.")
-elif sehat:
-    st.success(f"Scheduler sehat. Fetch terakhir {fmt.waktu_relatif(acuan)}"
-               f" ({fmt.format_wita(acuan)}).")
-else:
-    st.warning(f"Fetch terakhir {fmt.waktu_relatif(acuan)}"
-               f" ({fmt.format_wita(acuan)}). Scheduler mungkin berhenti.")
 
 total = repository.count_articles(db_path)
 baru_24 = repository.count_articles_since(db_path, fmt.iso_mundur(24))
 status_media = repository.get_media_last_status(db_path)
 ok = sum(1 for v in status_media.values() if v["status"] == "ok")
 
-k1, k2, k3, k4, k5, k6 = st.columns(6)
-k1.metric("Total artikel", f"{total:,}".replace(",", "."))
-k2.metric("24 jam terakhir", f"{baru_24:,}".replace(",", "."))
-k3.metric("Media OK", f"{ok}/{len(names)}")
-k4.metric("Fetch terakhir", fmt.waktu_relatif(acuan))
 dist_s = repository.distribusi_sentimen(db_path)
 tot_s = sum(dist_s.values())
 senti_pct = (round(100 * (dist_s.get("positif", 0) - dist_s.get("negatif", 0))
                    / tot_s) if tot_s else 0)
-k5.metric("Sentimen rata-rata", f"{senti_pct:+d}%".replace("-", "−"))
-k6.metric("Risiko rata-rata", f"{repository.rata_risiko(db_path):.0f}/100")
+dist_r = repository.distribusi_risiko(db_path)
+tot_r = sum(dist_r.values())
+risiko_avg = repository.rata_risiko(db_path)
+
+
+def _segbar(bagian: list[tuple[int, str]]) -> str:
+    tot = sum(n for n, _ in bagian)
+    if tot <= 0:
+        return ""
+    seg = "".join(
+        f'<span style="width:{100 * n / tot:.1f}%;background:{w}"></span>'
+        for n, w in bagian if n > 0)
+    return f'<div class="mm-kpi-bar">{seg}</div>'
+
+
+_dot = ('<span class="mm-live-dot"></span>' if sehat
+        else '<span class="mm-live-dot mm-off"></span>')
+if menit is None:
+    _health = "Belum ada siklus fetch yang tercatat."
+    _upd = "—"
+elif sehat:
+    _health = f"Scheduler sehat · {fmt.waktu_relatif(acuan)}"
+    _upd = fmt.format_wita(acuan)
+else:
+    _health = f"Scheduler mungkin berhenti · {fmt.waktu_relatif(acuan)}"
+    _upd = fmt.format_wita(acuan)
+
+st.markdown(
+    f'<div class="mm-hero">'
+    f'<div class="mm-hero-left">{_dot}<div>'
+    f'<div class="mm-hero-title">Media Monitor</div>'
+    f'<div class="mm-hero-sub">PANTAU MEDIA · SENTIMEN &amp; RISIKO</div>'
+    f'</div></div>'
+    f'<div class="mm-hero-right">'
+    f'<div class="mm-hero-upd-label">diperbarui</div>'
+    f'<div class="mm-hero-upd">{html_mod.escape(_upd)}</div>'
+    f'<div class="mm-hero-health">'
+    f'<span class="mm-dot {"mm-ok" if sehat else "mm-err"}"></span>'
+    f'{html_mod.escape(_health)}</div>'
+    f'</div></div>',
+    unsafe_allow_html=True,
+)
+
+_sent_tanda = "+" if senti_pct >= 0 else "−"
+st.markdown(
+    f'<div class="mm-kpis">'
+    f'<div class="mm-kpi">'
+    f'<div class="mm-kpi-num">{f"{total:,}".replace(",", ".")}</div>'
+    f'<div class="mm-kpi-label">TOTAL ARTIKEL</div>'
+    f'<div class="mm-kpi-sub"><b>{ok}/{len(names)}</b> media OK · '
+    f'<b>{f"{baru_24:,}".replace(",", ".")}</b> dalam 24 jam</div>'
+    f'</div>'
+    f'<div class="mm-kpi">'
+    f'<div class="mm-kpi-num">{_sent_tanda}{abs(senti_pct)}%</div>'
+    f'<div class="mm-kpi-label">SENTIMEN RATA-RATA</div>'
+    f'<div class="mm-kpi-sub">P <b>{dist_s.get("positif", 0)}</b> · '
+    f'N <b>{dist_s.get("netral", 0)}</b> · '
+    f'Ng <b>{dist_s.get("negatif", 0)}</b></div>'
+    + _segbar([(dist_s.get("positif", 0), "#34d399"),
+               (dist_s.get("netral", 0), "#b6c6f0"),
+               (dist_s.get("negatif", 0), "#fb7185")])
+    + f'</div>'
+    f'<div class="mm-kpi">'
+    f'<div class="mm-kpi-num">{risiko_avg:.0f}'
+    f'<span class="mm-kpi-den">/100</span></div>'
+    f'<div class="mm-kpi-label">RISIKO RATA-RATA</div>'
+    f'<div class="mm-kpi-sub">R <b>{dist_r.get("Rendah", 0)}</b> · '
+    f'S <b>{dist_r.get("Sedang", 0)}</b> · '
+    f'T <b>{dist_r.get("Tinggi", 0)}</b></div>'
+    + _segbar([(dist_r.get("Rendah", 0), "#34d399"),
+               (dist_r.get("Sedang", 0), "#fbbf24"),
+               (dist_r.get("Tinggi", 0), "#fb7185")])
+    + f'</div>'
+    f'</div>',
+    unsafe_allow_html=True,
+)
 
 # ---------- strip status per media ----------
 if status_media:
@@ -172,9 +282,7 @@ if status_media:
                 unsafe_allow_html=True)
 
 # ---------- agregat sentimen & risiko ----------
-dist_r = repository.distribusi_risiko(db_path)
 if dist_s or dist_r:
-    tot_r = sum(dist_r.values())
     b1, b2 = st.columns(2)
     with b1:
         st.markdown(kmp.bar_agregat(
@@ -199,33 +307,42 @@ with st.sidebar:
 
 @st.dialog("Detail artikel", width="large")
 def _dialog_artikel(a: dict) -> None:
-    col = warna.get(a["media"], "#8ea0c9")
+    # Header ala referensi: media · — · Buka sumber ↗
+    media_nm = html_mod.escape(display.get(a["media"], a["media"]))
+    url_esc = html_mod.escape(a["url"], quote=True)
     st.markdown(
-        f'<span style="background:{col};color:#111;'
-        f'font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px">'
-        f'{html_mod.escape(display.get(a["media"], a["media"]))}</span>',
+        f'<div class="mm-dlg-head"><b>{media_nm}</b>'
+        f'<span class="mm-dlg-sep"> · — · </span>'
+        f'<a class="mm-dlg-src" href="{url_esc}" target="_blank">'
+        f'Buka sumber ↗</a></div>',
         unsafe_allow_html=True,
     )
-    st.markdown(f"### {a['title'] or '(tanpa judul)'}")
-    baris = []
-    if a.get("sentimen"):
-        baris.append(kmp.pill(
-            f"Sentimen: {a['sentimen']} ({a.get('sentimen_skor', 0)})",
-            kmp.WARNA_SENTIMEN.get(a["sentimen"], "#8ea0c9")))
-    if a.get("risiko"):
-        baris.append(kmp.pill(
-            f"Risiko: {a['risiko']} ({a.get('risiko_skor', 0)}/100)",
-            kmp.WARNA_RISIKO.get(a["risiko"], "#8ea0c9")))
-    if baris:
-        st.markdown(" ".join(baris), unsafe_allow_html=True)
-    st.caption(f"Dipublikasikan: {fmt.format_wita(a.get('published_at'))}")
+    # Badge format referensi: "Risiko: Sedang - 50", "Sentimen: Netral"
+    lvl = a.get("risiko") or "Rendah"
+    sent = (a.get("sentimen") or "netral").capitalize()
+    st.markdown(
+        kmp.pill(f"Risiko: {lvl} - {a.get('risiko_skor', 0):g}",
+                 kmp.WARNA_RISIKO.get(a.get("risiko"), "#8ea0c9"))
+        + " " + kmp.pill(f"Sentimen: {sent}", "#b6c6f0"),
+        unsafe_allow_html=True,
+    )
+    with st.expander("❓ kenapa label ini?", expanded=False):
+        _skala_penjelasan(a)
 
-    with st.expander("🔍 Kenapa label ini?", expanded=False):
-        _penjelasan_label(a)
+    st.markdown(
+        f"<div class='mm-dlg-title'>"
+        f"{html_mod.escape(a['title'] or '(tanpa judul)')}</div>",
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        f'<div class="mm-penjelasan"><b>AI:</b> '
+        f'{html_mod.escape(_teks_ai(a))}</div>',
+        unsafe_allow_html=True,
+    )
+    st.caption(f"Dipublikasikan: {fmt.format_wita(a.get('published_at'))}")
 
     isi = (a.get("isi_lengkap") or "").strip()
     if isi:
-        st.markdown("**Isi berita**")
         for _pg in isi.split("\n\n"):
             _pg = _pg.strip()
             if _pg:
@@ -233,43 +350,51 @@ def _dialog_artikel(a: dict) -> None:
     else:
         _sum = fmt.bersihkan_html(a.get("summary") or "").strip()
         if _sum and not kmp.mirip_judul(_sum, a.get("title")):
-            st.markdown("**Ringkasan**")
             st.write(_sum)
-    st.link_button("Buka sumber ↗", a["url"])
 
 
-def _penjelasan_label(a: dict) -> None:
-    """Kotak penjelasan ala modal referensi: alasan + skala."""
+def _komponen_label(a: dict) -> tuple[str, str, list[tuple[str, float]]]:
+    """Hitung bahan penjelasan label: (sentimen, alasan, komponen risiko)."""
     analisa_cfg = settings["analisa"]
     ringkas = kmp.teks_ringkasan_mentah(a, max_len=2000)
     kata = kata_berpengaruh(
         a.get("title") or "", ringkas,
         bobot_judul=float(analisa_cfg.get("bobot_judul", 2.0)))
     sent = a.get("sentimen") or "netral"
-    skor_s = a.get("sentimen_skor", 0)
     if sent == "positif" and kata["positif"]:
-        alasan_s = ("kata positif " + ", ".join(f"'{w}'" for w in kata["positif"][:5])
-                    + " lebih dominan")
+        alasan = ("kata positif "
+                  + ", ".join(f"'{w}'" for w in kata["positif"][:5])
+                  + " lebih dominan")
     elif sent == "negatif" and kata["negatif"]:
-        alasan_s = ("kata negatif " + ", ".join(f"'{w}'" for w in kata["negatif"][:5])
-                    + " lebih dominan")
+        alasan = ("kata negatif "
+                  + ", ".join(f"'{w}'" for w in kata["negatif"][:5])
+                  + " lebih dominan")
     else:
-        alasan_s = "tidak ada kata sentimen yang menonjol"
-
+        alasan = "tidak ada kata sentimen yang menonjol"
     penanda = settings.get("verifikasi", {}).get("penanda_bombastis", [])
     flags = cek_headline(a.get("title") or "", ringkas, penanda)
     verdicts = _VERDICTS.get(a.get("url"), [])
     komp = komponen_risiko(sent, "bombastis" in flags, verdicts, analisa_cfg)
+    return sent, alasan, komp
+
+
+def _teks_ai(a: dict) -> str:
+    """Kalimat penjelasan ala kotak AI referensi."""
+    sent, alasan, komp = _komponen_label(a)
+    skor_s = a.get("sentimen_skor", 0)
+    bagian = [f"Sentimen {sent} (skor {skor_s:g}): {alasan}."]
     rincian = "; ".join(
         f"{ket} {'+' if d >= 0 else '−'}{abs(d):g}" for ket, d in komp)
+    bagian.append(
+        f"Risiko {a.get('risiko')} (skor {a.get('risiko_skor', 0):g}/100): "
+        f"{rincian}.")
+    return " ".join(bagian)
 
-    st.markdown(
-        f'<div class="mm-penjelasan">'
-        f'<b>Sentimen {sent}</b> (skor {skor_s}): {html_mod.escape(alasan_s)}.<br>'
-        f'<b>Risiko {a.get("risiko")}</b> (skor {a.get("risiko_skor", 0)}/100): '
-        f'{html_mod.escape(rincian)}.</div>',
-        unsafe_allow_html=True)
 
+def _skala_penjelasan(a: dict) -> None:
+    """Skala risiko & sentimen ala modal 'Penjelasan Analisis' referensi."""
+    analisa_cfg = settings["analisa"]
+    sent, _, _ = _komponen_label(a)
     t_tinggi = float(analisa_cfg.get("ambang_risiko_tinggi", 65))
     t_sedang = float(analisa_cfg.get("ambang_risiko_sedang", 35))
     lvl = a.get("risiko") or "Rendah"
@@ -314,11 +439,18 @@ def _penjelasan_label(a: dict) -> None:
                "belum tentu 100% valid.")
 
 
-st.subheader("Berita per media")
 dist_pm = repository.distribusi_per_media(db_path)
 grid = repository.get_artikel_per_media(db_path, limit_per_media=per_media)
 _VERDICTS = repository.get_verdicts_artikel(db_path)
 names_grid = [m for m in names if m in grid]
+
+st.markdown(
+    f'<div class="mm-section">'
+    f'<span class="mm-section-title">Berita per media</span>'
+    f'<span class="mm-section-sub">'
+    f'{len(names_grid)} media · klik judul untuk detail</span></div>',
+    unsafe_allow_html=True,
+)
 
 # Dialog detail via hyperlink judul (?art=<url>): buka saat param ada,
 # bersihkan setelah ditutup agar refresh tak membuka lagi.
@@ -340,3 +472,13 @@ for _r in range(0, len(names_grid), 4):
                     _name, display[_name], warna[_name],
                     dist_pm.get(_name, {}), grid[_name]),
                 unsafe_allow_html=True)
+
+# ---------- footer ----------
+st.markdown(
+    '<div class="mm-footer">'
+    "<b>Disclaimer:</b> Tidak 100% valid, ini hanya berupa ringkasan "
+    "otomatis. Gunakan informasi ini dengan bijak. Algoritma berdasarkan "
+    "rumus yang saya buat, dan belum tentu valid."
+    "</div>",
+    unsafe_allow_html=True,
+)
