@@ -588,6 +588,7 @@ st.markdown(
 )
 
 _sent_tanda = "+" if senti_pct >= 0 else "−"
+_emo_s = ("😊" if senti_pct >= 15 else "☹️" if senti_pct <= -15 else "😐")
 
 st.markdown(
 
@@ -595,7 +596,7 @@ st.markdown(
 
     f'<div class="mm-kpi">'
 
-    f'<div class="mm-kpi-num">{f"{total:,}".replace(",", ".")}</div>'
+    f'<div class="mm-kpi-num">📰 {f"{total:,}".replace(",", ".")}</div>'
 
     f'<div class="mm-kpi-label">TOTAL ARTIKEL</div>'
 
@@ -607,7 +608,7 @@ st.markdown(
 
     f'<div class="mm-kpi">'
 
-    f'<div class="mm-kpi-num">{_sent_tanda}{abs(senti_pct)}%</div>'
+    f'<div class="mm-kpi-num">{_emo_s} {_sent_tanda}{abs(senti_pct)}%</div>'
 
     f'<div class="mm-kpi-label">SENTIMEN RATA-RATA</div>'
 
@@ -627,7 +628,7 @@ st.markdown(
 
     f'<div class="mm-kpi">'
 
-    f'<div class="mm-kpi-num">{risiko_avg:.0f}'
+    f'<div class="mm-kpi-num">🛡 {risiko_avg:.0f}'
 
     f'<span class="mm-kpi-den">/100</span></div>'
 
