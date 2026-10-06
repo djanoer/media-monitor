@@ -671,3 +671,54 @@ def simpan_trends_ringkas(
                 json.dumps(tren.get("terkait", {})),
             ),
         )
+
+
+def get_trends_harian(
+    db_path: str | pathlib.Path, topik: str
+) -> list[dict]:
+    """Skor minat harian per keyword (untuk grafik)."""
+    with _connect(db_path) as conn:
+        return [
+            dict(r)
+            for r in conn.execute(
+                "SELECT keyword, tanggal, skor FROM trends_harian"
+                " WHERE topik = ? ORDER BY tanggal",
+                (topik,),
+            )
+        ]
+
+
+def get_trends_ringkas_terbaru(
+    db_path: str | pathlib.Path, topik: str
+) -> dict | None:
+    """Ringkasan Trends terakhir (per_daerah + terkait, sudah di-parse)."""
+    with _connect(db_path) as conn:
+        r = conn.execute(
+            "SELECT per_daerah, terkait, fetched_at FROM trends_ringkas"
+            " WHERE topik = ? ORDER BY id DESC LIMIT 1",
+            (topik,),
+        ).fetchone()
+    if r is None:
+        return None
+    return {
+        "per_daerah": json.loads(r["per_daerah"] or "[]"),
+        "terkait": json.loads(r["terkait"] or "{}"),
+        "fetched_at": r["fetched_at"],
+    }
+
+
+def get_youtube_videos(
+    db_path: str | pathlib.Path, topik: str, limit: int = 20
+) -> list[dict]:
+    """Video YouTube per topik, urut views terbanyak."""
+    with _connect(db_path) as conn:
+        return [
+            dict(r)
+            for r in conn.execute(
+                "SELECT video_id, title, channel, published_at,"
+                " view_count, like_count, comment_count"
+                " FROM youtube_videos WHERE topik = ?"
+                " ORDER BY view_count DESC LIMIT ?",
+                (topik, limit),
+            )
+        ]
