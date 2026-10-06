@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS articles (
     media TEXT NOT NULL,
     title TEXT,
     summary TEXT,
+    isi_lengkap TEXT,
     link TEXT,
     published_at TEXT,
     fetched_at TEXT NOT NULL,
@@ -863,7 +864,8 @@ def get_artikel_per_media(
         for m in medias:
             hasil[m] = [
                 dict(r) for r in conn.execute(
-                    "SELECT url, media, title, summary, published_at,"
+                    "SELECT url, media, title, summary, isi_lengkap,"
+                    " published_at,"
                     " sentimen, sentimen_skor, risiko, risiko_skor"
                     " FROM articles WHERE media = ?"
                     " ORDER BY published_at DESC, id DESC LIMIT ?",
@@ -871,3 +873,40 @@ def get_artikel_per_media(
                 )
             ]
     return hasil
+
+
+def migrate_isi_lengkap(db_path: str | pathlib.Path) -> bool:
+    """Tambah kolom isi_lengkap ke articles bila belum ada (idempoten)."""
+    with _connect(db_path) as conn:
+        ada = {r[1] for r in conn.execute("PRAGMA table_info(articles)")}
+        if "isi_lengkap" in ada:
+            return False
+        conn.execute("ALTER TABLE articles ADD COLUMN isi_lengkap TEXT")
+        return True
+
+
+def artikel_tanpa_isi(
+    db_path: str | pathlib.Path, limit: int = 100
+) -> list[str]:
+    """URL artikel yang belum pernah dicoba unduh (terbaru dulu).
+
+    Artikel yang gagal unduh tersimpan sebagai "" dan tidak diulang
+    (kecuali via force di skrip).
+    """
+    with _connect(db_path) as conn:
+        return [
+            r["url"] for r in conn.execute(
+                "SELECT url FROM articles"
+                " WHERE isi_lengkap IS NULL"
+                " ORDER BY published_at DESC, id DESC LIMIT ?",
+                (limit,),
+            )
+        ]
+
+
+def simpan_isi(db_path: str | pathlib.Path, url: str, isi: str) -> None:
+    """Simpan isi artikel ("" = gagal unduh, tetap ditandai agar tak diulang)."""
+    with _connect(db_path) as conn:
+        conn.execute(
+            "UPDATE articles SET isi_lengkap = ? WHERE url = ?", (isi, url)
+        )

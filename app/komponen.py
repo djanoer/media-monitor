@@ -75,27 +75,73 @@ def bar_agregat(
     )
 
 
-def item_berita_grid(r: dict, max_judul: int = 110,
-                      max_ringkas: int = 130) -> str:
-    """Satu item berita untuk grid kolom media (ala referensi).
-
-    Border kiri berwarna sesuai level risiko; badge sentimen + risiko;
-    judul + cuplikan ringkasan di bawahnya.
-    """
-    col = WARNA_RISIKO.get(r.get("risiko"), "#8ea0c9")
-    judul = html_mod.escape((r.get("title") or "(tanpa judul)")[:max_judul])
-    sum_mentah = fmt.bersihkan_html(r.get("summary") or "").strip()
-    ringkas = html_mod.escape(sum_mentah[:max_ringkas])
-    if len(sum_mentah) > max_ringkas:
-        ringkas += "…"
-    isi = (f'<div class="mi-item" style="border-left-color:{col}">'
-           f'<div>')
+def pills_artikel(r: dict) -> str:
+    """Baris badge risiko + sentimen untuk satu artikel."""
+    isi = '<div>'
     if r.get("risiko"):
         isi += pill(r["risiko"], WARNA_RISIKO.get(r["risiko"], "#8ea0c9"))
     if r.get("sentimen"):
         isi += pill(r["sentimen"],
                     WARNA_SENTIMEN.get(r["sentimen"], "#8ea0c9"))
-    isi += f'</div><div class="mi-item-title">{judul}</div>'
+    return isi + '</div>'
+
+
+def mirip_judul(ringkasan: str | None, judul: str | None) -> bool:
+    """True bila ringkasan kosong atau hanya mengulang judul.
+
+    Banyak feed RSS mengisi deskripsi dengan judul (+ embel-embel
+    seperti " - media.co.id"); itu bukan ringkasan sungguhan.
+    """
+    r = (ringkasan or "").strip().lower()
+    j = (judul or "").strip().lower()
+    if not r:
+        return True
+    if r == j:
+        return True
+    # pola "judul - nama media" / "judul | media"
+    if r.startswith(j) and len(r) <= len(j) + 40:
+        return True
+    return False
+
+
+def teks_ringkasan_mentah(r: dict, max_len: int = 140) -> str:
+    """Teks ringkasan artikel TANPA escape (untuk komputasi/internal).
+
+    Prioritas: isi_lengkap hasil unduhan (2 kalimat pertama) ->
+    ringkasan RSS (bila bukan duplikat judul) -> "".
+    """
+    isi = (r.get("isi_lengkap") or "").strip()
+    if isi:
+        kalimat = re.split(r"(?<=[.!?])\s+", isi)
+        teks = " ".join(kalimat[:2]).strip()
+    else:
+        teks = fmt.bersihkan_html(r.get("summary") or "").strip()
+        if mirip_judul(teks, r.get("title")):
+            return ""
+    if len(teks) > max_len:
+        teks = teks[:max_len].rsplit(" ", 1)[0] + "…"
+    return teks
+
+
+def cuplikan(r: dict, max_len: int = 140) -> str:
+    """Teks tampil untuk ringkasan artikel (sudah di-escape)."""
+    return html_mod.escape(teks_ringkasan_mentah(r, max_len))
+
+
+def item_berita_grid(r: dict, max_judul: int = 110,
+                      max_ringkas: int = 130) -> str:
+    """Satu item berita untuk grid kolom media (ala referensi).
+
+    Border kiri berwarna sesuai level risiko; badge sentimen + risiko;
+    judul + cuplikan ringkasan di bawahnya. (Dipakai untuk render
+    non-interaktif; halaman Home memakai pills_artikel + tombol judul.)
+    """
+    col = WARNA_RISIKO.get(r.get("risiko"), "#8ea0c9")
+    judul = html_mod.escape((r.get("title") or "(tanpa judul)")[:max_judul])
+    ringkas = cuplikan(r, max_ringkas)
+    isi = (f'<div class="mi-item" style="border-left-color:{col}">'
+           f'{pills_artikel(r)}'
+           f'<div class="mi-item-title">{judul}</div>')
     if ringkas:
         isi += f'<div class="mi-item-sum">{ringkas}</div>'
     isi += '</div>'

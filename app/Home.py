@@ -50,24 +50,35 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
 div[data-testid="stVerticalBlockBorderWrapper"]::-webkit-scrollbar {width:6px;}
 div[data-testid="stVerticalBlockBorderWrapper"]::-webkit-scrollbar-thumb {
   background:rgba(90,130,255,.4); border-radius:3px;}
-/* Tombol sembunyi/tampil sidebar: font ikon Material kadang gagal dimuat
+/* Tombol expand/collapse sidebar: font ikon Material kadang gagal dimuat
    sehingga muncul teks ligature "keyboard_double_arrow_right".
-   Sembunyikan ikon asli, ganti chevron CSS. */
-button[data-testid="stSidebarCollapseButton"],
-div[data-testid="stSidebarCollapsedControl"] button,
-button[data-testid="collapsedControl"] {font-size:0 !important;}
-button[data-testid="stSidebarCollapseButton"] span,
-button[data-testid="stSidebarCollapseButton"] svg,
-div[data-testid="stSidebarCollapsedControl"] button span,
-div[data-testid="stSidebarCollapsedControl"] button svg,
-button[data-testid="collapsedControl"] span,
-button[data-testid="collapsedControl"] svg {display:none !important;}
-button[data-testid="stSidebarCollapseButton"]::after,
-div[data-testid="stSidebarCollapsedControl"] button::after,
-button[data-testid="collapsedControl"]::after {
-  content:"»"; font-size:20px; color:#8ea0c9; line-height:1;}
-section[data-testid="stSidebar"]
+   (Terverifikasi di bundle Streamlit 1.65: testid stExpandSidebarButton
+   saat sidebar tertutup, stSidebarCollapseButton saat terbuka.) */
+button[data-testid="stExpandSidebarButton"],
+button[data-testid="stSidebarCollapseButton"] {font-size:0 !important;}
+button[data-testid="stExpandSidebarButton"] *,
+button[data-testid="stSidebarCollapseButton"] * {display:none !important;}
+button[data-testid="stExpandSidebarButton"]::after,
+button[data-testid="stSidebarCollapseButton"]::after {
+  font-size:22px; color:#8ea0c9; line-height:1;}
+button[data-testid="stExpandSidebarButton"]::after {content:"»";}
 button[data-testid="stSidebarCollapseButton"]::after {content:"«";}
+/* Judul artikel sebagai hyperlink (button Streamlit yang disamarkan):
+   klik judul -> dialog detail. */
+div[data-testid="stButton"] {margin:0 !important;}
+div[data-testid="stButton"] button {
+  background:transparent !important; border:none !important;
+  box-shadow:none !important; padding:0 !important; margin:6px 0 0 !important;
+  color:#e6ecff !important; font-size:13px !important; font-weight:600 !important;
+  line-height:1.35 !important; text-align:left !important;
+  white-space:normal !important; height:auto !important; min-height:0 !important;
+  width:100% !important;}
+div[data-testid="stButton"] button:hover {
+  color:#8fb0ff !important; text-decoration:underline !important;
+  background:transparent !important; border:none !important;}
+div[data-testid="stButton"] button:focus {
+  box-shadow:none !important; outline:none !important;}
+.mi-pemisah {border-bottom:1px solid rgba(255,255,255,.06); margin:10px 0 2px;}
 .mm-penjelasan {background:rgba(79,140,255,.10);
   border:1px solid rgba(90,130,255,.25); border-radius:10px;
   padding:10px 12px; margin:8px 0; color:#dbe4ff; font-size:13px;}
@@ -110,6 +121,7 @@ if not db_path.exists():
 # Pastikan skema terbaru (idempoten; CREATE TABLE IF NOT EXISTS + migrasi).
 repository.init_db(db_path)
 repository.migrate_analisa(db_path)
+repository.migrate_isi_lengkap(db_path)
 
 media_list = load_media()
 display = {m["name"]: m["display"] for m in media_list}
@@ -224,17 +236,17 @@ def _dialog_artikel(a: dict) -> None:
     with st.expander("🔍 Kenapa label ini?", expanded=False):
         _penjelasan_label(a)
 
-    ringkas = fmt.bersihkan_html(a.get("summary") or "")
+    ringkas = kmp.teks_ringkasan_mentah(a, max_len=600)
     if ringkas:
         st.markdown("**Ringkasan**")
-        st.write(ringkas[:800])
+        st.write(ringkas)
     st.link_button("Buka sumber ↗", a["url"])
 
 
 def _penjelasan_label(a: dict) -> None:
     """Kotak penjelasan ala modal referensi: alasan + skala."""
     analisa_cfg = settings["analisa"]
-    ringkas = fmt.bersihkan_html(a.get("summary") or "")
+    ringkas = kmp.teks_ringkasan_mentah(a, max_len=2000)
     kata = kata_berpengaruh(
         a.get("title") or "", ringkas,
         bobot_judul=float(analisa_cfg.get("bobot_judul", 2.0)))
@@ -345,7 +357,13 @@ for i, name in enumerate(names_grid):
                  ("Tinggi", dr.get("Tinggi", 0), "#fb7185")],
             ), unsafe_allow_html=True)
             for a in arts:
-                st.markdown(kmp.item_berita_grid(a), unsafe_allow_html=True)
-                if st.button("Detail →", key=f"det-{a['url']}",
-                             use_container_width=True):
+                st.markdown(kmp.pills_artikel(a), unsafe_allow_html=True)
+                if st.button(a["title"] or "(tanpa judul)",
+                             key=f"judul-{a['url']}"):
                     _dialog_artikel(a)
+                cuplik = kmp.cuplikan(a)
+                if cuplik:
+                    st.markdown(f'<div class="mi-item-sum">{cuplik}</div>',
+                                unsafe_allow_html=True)
+                st.markdown('<div class="mi-pemisah"></div>',
+                            unsafe_allow_html=True)

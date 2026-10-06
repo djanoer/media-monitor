@@ -14,6 +14,7 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 
 from src.common.config import load_media, load_settings
 from src.common.http_client import HttpClient
+from src.ingestion.artikel import siklus_unduh_isi
 from src.ingestion.fetcher import fetch_media
 from src.storage import repository
 
@@ -70,6 +71,20 @@ def fetch_cycle(
             )
     finally:
         repository.finish_run(db_path, run_id)
+    # Pengayaan best-effort: unduh isi artikel yang belum punya, agar
+    # ringkasan di dashboard bukan sekadar judul (Fase H). Gagal di sini
+    # tidak menggagalkan siklus fetch.
+    try:
+        cfg_isi = settings.get("unduh_isi", {})
+        if cfg_isi.get("aktif", True):
+            siklus_unduh_isi(
+                db_path,
+                limit=int(cfg_isi.get("limit_per_siklus", 150)),
+                delay_detik=float(cfg_isi.get("delay_detik", 1.0)),
+                timeout_detik=int(cfg_isi.get("timeout_detik", 20)),
+            )
+    except Exception as exc:
+        log.warning("unduh isi artikel gagal: %s", exc)
     return summary
 
 

@@ -66,3 +66,11 @@ analisa:
 
 storage:
   db_path: "data/media_monitor.db"
+
+# Unduh isi lengkap artikel (Fase H): agar ringkasan dashboard bukan
+# sekadar judul. Dijalankan otomatis di akhir tiap siklus fetch.
+unduh_isi:
+  aktif: true
+  limit_per_siklus: 150   # artikel terbaru tanpa isi per siklus
+  delay_detik: 1.0        # jeda antar request (sopan ke server media)
+  timeout_detik: 20
