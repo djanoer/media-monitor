@@ -80,18 +80,19 @@ st.markdown("""
   border-top:1px solid rgba(255,255,255,.06);}
 .mm-section-title {font-size:17px; font-weight:700; color:#e6ecff;}
 .mm-section-sub {font-size:11.5px; color:#5b6b8c;}
-/* bingkai kartu utama per media */
+/* kartu utama per media: tanpa border, compact */
 div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] {
-  background:linear-gradient(180deg,#111d3c,#0e1730);
-  border:1px solid rgba(90,130,255,.18); border-radius:12px;
-  padding:10px 12px; margin-bottom:28px;}
+  background:transparent;
+  border:none;
+  padding:0 2px;
+  margin-bottom:24px;}
 /* kartu artikel (border wrapper di dalam border wrapper): elegan,
    ramping, ada jarak antar kartu. Selektor lebih spesifik + ditulis
    setelah aturan kartu utama sehingga menang. */
 div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"] {
   background:rgba(255,255,255,.03);
   border:none; border-left:3px solid #8ea0c9; border-radius:10px;
-  padding:8px 12px; margin:0 0 10px; transition:.15s;}
+  padding:7px 11px; margin:0 0 8px; transition:.15s;}
 div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"]:hover {
   background:rgba(255,255,255,.06); transform:translateY(-1px);}
 /* baris meta artikel: pills */
@@ -106,7 +107,7 @@ div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[
 div[data-testid="stColumn"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"]:has(.mi-risk[data-r="Rendah"]) {
   border-left:3px solid #34d399;}
 /* header kartu minimalis: nama + pil count + 2 baris bar mini */
-.mi-hdr {margin-bottom:12px;}
+.mi-hdr {margin-bottom:8px;}
 .mi-hdr-top {display:flex; align-items:center; gap:8px; padding:2px 2px 8px;}
 .mi-hdr-dot {width:9px; height:9px; border-radius:50%; display:inline-block;}
 .mi-hdr-name {font-size:15px; font-weight:700; color:#e6ecff;}
