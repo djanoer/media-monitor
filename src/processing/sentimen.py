@@ -59,3 +59,40 @@ def analisis(
     if skor <= -ambang:
         return "negatif", skor
     return "netral", skor
+
+
+def kata_berpengaruh(
+    judul: str,
+    ringkasan: str,
+    n: int = 6,
+    bobot_judul: float = 2.0,
+) -> dict[str, list[str]]:
+    """Kata sentimen paling berpengaruh (untuk penjelasan label).
+
+    Kembalikan {"positif": [...], "negatif": [...]} — kata unik diurutkan
+    berdasarkan kontribusi bobot absolut terbesar.
+    """
+    kontribusi: dict[str, float] = {}
+
+    def _hitung(teks: str, bobot: float) -> None:
+        tokens = tokenisasi(teks)
+        for i, tok in enumerate(tokens):
+            if tok in POSITIF:
+                val = 1.0
+            elif tok in NEGATIF:
+                val = -1.0
+            else:
+                continue
+            jendela = tokens[max(0, i - 2):i]
+            if any(t in NEGASI for t in jendela):
+                val = -val
+            if any(t in INTENSIF for t in jendela):
+                val *= 1.5
+            kontribusi[tok] = kontribusi.get(tok, 0.0) + val * bobot
+
+    _hitung(judul, bobot_judul)
+    _hitung(ringkasan or "", 1.0)
+    urut = sorted(kontribusi.items(), key=lambda kv: -abs(kv[1]))
+    pos = [k for k, v in urut if v > 0][:n]
+    neg = [k for k, v in urut if v < 0][:n]
+    return {"positif": pos, "negatif": neg}

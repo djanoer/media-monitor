@@ -133,3 +133,37 @@ def test_item_berita_grid():
     assert "Judul berita" in html
     assert "#fb7185" in html  # border + badge Tinggi
     assert "negatif" in html
+
+
+def test_kata_berpengaruh_negatif():
+    from src.processing.sentimen import kata_berpengaruh
+    k = kata_berpengaruh(
+        "Kebakaran hutan meluas, korban tewas bertambah",
+        "Bencana parah, warga panik", 6, 2.0)
+    assert "kebakaran" in k["negatif"]
+    assert k["positif"] == []
+
+
+def test_kata_berpengaruh_positif():
+    from src.processing.sentimen import kata_berpengaruh
+    k = kata_berpengaruh(
+        "Presiden apresiasi keberhasilan program", "Sukses luar biasa", 6, 2.0)
+    assert "apresiasi" in k["positif"]
+    assert k["negatif"] == []
+
+
+def test_komponen_risiko_urutan_dan_jumlah():
+    from src.processing.risiko import komponen_risiko, skor_risiko
+    komp = komponen_risiko("negatif", True, ["belum terverifikasi"], CFG)
+    ket = [k for k, _ in komp]
+    assert ket == ["base", "sentimen negatif", "headline bombastis",
+                   "klaim belum terverifikasi"]
+    total = max(0.0, min(100.0, round(sum(d for _, d in komp), 1)))
+    _, skor = skor_risiko("negatif", True, ["belum terverifikasi"], CFG)
+    assert total == skor
+
+
+def test_komponen_risiko_tidak_ada_verdict():
+    from src.processing.risiko import komponen_risiko
+    komp = komponen_risiko("netral", False, [], CFG)
+    assert [k for k, _ in komp] == ["base", "sentimen netral"]

@@ -27,40 +27,47 @@ from src.storage import repository  # noqa: E402
 st.set_page_config(page_title="Verifikasi Karhutla", layout="wide",
                    page_icon="✅")
 
-# ---------- tema gelap ala Monitor Indonesia ----------
+# ---------- tema gelap ala Monitor Indonesia (nilai exact dari situs) ----------
 st.markdown("""
 <style>
-.stApp {background:#0a0e1a;}
-.mi-kpi {border:1px solid rgba(255,255,255,0.09); border-radius:12px;
-  padding:14px 18px; background:rgba(255,255,255,0.02); margin-bottom:6px;}
-.mi-kpi-num {font-size:30px; font-weight:800; color:#fff; line-height:1.1;}
-.mi-kpi-label {font-size:11px; color:#9aa0a6; text-transform:uppercase;
-  letter-spacing:1px; margin-top:2px;}
-.mi-kpi-sub {font-size:12px; color:#9aa0a6; margin-top:4px;}
-.mi-col {border:1px solid rgba(255,255,255,0.09); border-radius:12px;
-  padding:0; background:rgba(255,255,255,0.02); margin-bottom:14px;
-  overflow:hidden;}
+.stApp {background:#070c18;
+  background-image:
+    radial-gradient(600px 400px at 10% 0%, rgba(79,140,255,.16), transparent),
+    radial-gradient(500px 380px at 90% 0%, rgba(34,211,238,.10), transparent),
+    radial-gradient(700px 500px at 50% 100%, rgba(167,139,250,.08), transparent);}
+.stApp, .stApp * {font-family:"Segoe UI", system-ui, -apple-system, Roboto,
+  "Helvetica Neue", Arial, sans-serif;}
+.mi-kpi {border:1px solid rgba(90,130,255,.18); border-radius:12px;
+  padding:14px 18px; margin-bottom:6px;
+  background:linear-gradient(160deg, #111d3c, #0e1730);}
+.mi-kpi-num {font-size:22px; font-weight:800; color:#e6ecff; line-height:1.1;
+  font-variant-numeric:tabular-nums;}
+.mi-kpi-label {font-size:10px; color:#8ea0c9; text-transform:uppercase;
+  letter-spacing:.8px; margin-top:2px;}
+.mi-kpi-sub {font-size:10.5px; color:#8ea0c9; margin-top:4px;}
+.mi-col {border:1px solid rgba(90,130,255,.18); border-radius:12px;
+  padding:0; margin-bottom:14px; overflow:hidden;
+  background:linear-gradient(180deg, #111d3c, #0e1730);}
 .mi-col-head {padding:12px 16px; border-bottom:1px solid
   rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px;}
-.mi-col-title {font-size:15px; font-weight:700; color:#fff;}
-.mi-count {margin-left:auto; font-size:11px; font-weight:700; color:#111;
-  background:#9aa0a6; border-radius:20px; padding:2px 10px;}
-.mi-badge {font-size:11px; font-weight:700; padding:2px 10px; border-radius:20px;
+.mi-col-title {font-size:15px; font-weight:700; color:#e6ecff;}
+.mi-count {margin-left:auto; font-size:11px; font-weight:700; color:#070c18;
+  background:#8ea0c9; border-radius:20px; padding:2px 10px;}
+.mi-badge {font-size:8.5px; font-weight:700; padding:2px 10px; border-radius:20px;
   white-space:nowrap; color:#111;}
-.mi-item {border-left:3px solid #9aa0a6; padding:10px 14px;
-  border-bottom:1px solid rgba(255,255,255,0.05);}
-.mi-item:last-child {border-bottom:none;}
-.mi-item-title {font-size:14px; color:#e8eaed; line-height:1.45; margin-top:6px;}
-.mi-meta {font-size:11px; color:#9aa0a6; margin-top:4px;}
-.mi-head {display:flex; align-items:baseline; justify-content:space-between;}
-.mi-updated {font-size:12px; color:#9aa0a6; text-align:right;}
+.mi-item {background:rgba(255,255,255,.025); border-radius:9px;
+  border-left:3px solid #8ea0c9; padding:7px 14px; margin:6px 10px;}
+.mi-item-title {font-size:13px; font-weight:600; color:#e6ecff; line-height:1.32;
+  margin-top:6px;}
+.mi-meta {font-size:11px; color:#8ea0c9; margin-top:4px;}
+.mi-updated {font-size:12px; color:#8ea0c9; text-align:right;}
 </style>
 """, unsafe_allow_html=True)
 
 WARNA_VERDICT = {
-    "terkoroborasi": "#3DDC84",
-    "satu sumber kredibel": "#FFD43B",
-    "belum terverifikasi": "#FF6B6B",
+    "terkoroborasi": "#34d399",      # hijau (seperti "Rendah"/"Positif")
+    "satu sumber kredibel": "#fbbf24",  # amber (seperti "Sedang")
+    "belum terverifikasi": "#fb7185",   # merah (seperti "Tinggi")
 }
 
 settings = load_settings()
@@ -85,6 +92,7 @@ repository.init_db(db_path)
 
 media_list = load_media()
 display = {m["name"]: m["display"] for m in media_list}
+warna = {m["name"]: m.get("color", "#8ea0c9") for m in media_list}
 
 clusters = repository.get_clusters(db_path)
 videos = repository.get_youtube_videos(db_path, TOPIK, limit=20)
@@ -168,10 +176,11 @@ def _kartu_cluster(c: dict) -> str:
     items = []
     for k in c["claims"]:
         media = html_mod.escape(display.get(k["media"], k["media"]))
+        mcol = warna.get(k["media"], "#8ea0c9")
         teks = html_mod.escape(k["claim_text"][:170])
         items.append(
             f'<div class="mi-item" style="border-left-color:{col}">'
-            f'<span class="mi-badge" style="background:#3a4356;color:#e8eaed">'
+            f'<span class="mi-badge" style="background:{mcol}">'
             f'{media}</span>'
             f'<div class="mi-item-title">{teks}</div></div>'
         )

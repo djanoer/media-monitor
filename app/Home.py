@@ -20,6 +20,9 @@ sys.path.insert(0, str(ROOT))
 from app import format as fmt  # noqa: E402
 from app import komponen as kmp  # noqa: E402
 from src.common.config import load_media, load_settings  # noqa: E402
+from src.processing.risiko import komponen_risiko  # noqa: E402
+from src.processing.sentimen import kata_berpengaruh  # noqa: E402
+from src.processing.verification import cek_headline  # noqa: E402
 from src.storage import repository  # noqa: E402
 
 st.set_page_config(page_title="Media Monitor", layout="wide", page_icon="📰")
@@ -34,12 +37,21 @@ st.markdown("""
     radial-gradient(700px 500px at 50% 100%, rgba(167,139,250,.08), transparent);}
 .stApp, .stApp * {font-family:"Segoe UI", system-ui, -apple-system, Roboto,
   "Helvetica Neue", Arial, sans-serif;}
-/* kartu kolom media = bordered container */
+/* kartu kolom media = bordered container, scroll bila panjang */
 div[data-testid="stVerticalBlockBorderWrapper"] {
   border:1px solid rgba(90,130,255,.18) !important;
   border-radius:12px !important;
   background:linear-gradient(180deg, #111d3c, #0e1730) !important;
-  padding:10px 12px !important;}
+  padding:10px 12px !important;
+  max-height:640px;
+  overflow-y:auto;}
+.mm-penjelasan {background:rgba(79,140,255,.10);
+  border:1px solid rgba(90,130,255,.25); border-radius:10px;
+  padding:10px 12px; margin:8px 0; color:#dbe4ff; font-size:13px;}
+.mm-skala {background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.08); border-radius:10px;
+  padding:8px 12px; margin:6px 0; color:#dbe4ff; font-size:13px;}
+.mm-skala-aktif {border:1px solid #fbbf24 !important;}
 .mi-gridhead {display:flex; align-items:center; gap:8px;
   padding:4px 2px 10px; border-bottom:1px solid rgba(255,255,255,.08);
   margin-bottom:6px;}
@@ -176,6 +188,10 @@ def _dialog_artikel(a: dict) -> None:
     if baris:
         st.markdown(" ".join(baris), unsafe_allow_html=True)
     st.caption(f"Dipublikasikan: {fmt.format_wita(a.get('published_at'))}")
+
+    with st.expander("🔍 Kenapa label ini?", expanded=False):
+        _penjelasan_label(a)
+
     ringkas = fmt.bersihkan_html(a.get("summary") or "")
     if ringkas:
         st.markdown("**Ringkasan**")
@@ -183,9 +199,86 @@ def _dialog_artikel(a: dict) -> None:
     st.link_button("Buka sumber ↗", a["url"])
 
 
+def _penjelasan_label(a: dict) -> None:
+    """Kotak penjelasan ala modal referensi: alasan + skala."""
+    analisa_cfg = settings["analisa"]
+    ringkas = fmt.bersihkan_html(a.get("summary") or "")
+    kata = kata_berpengaruh(
+        a.get("title") or "", ringkas,
+        bobot_judul=float(analisa_cfg.get("bobot_judul", 2.0)))
+    sent = a.get("sentimen") or "netral"
+    skor_s = a.get("sentimen_skor", 0)
+    if sent == "positif" and kata["positif"]:
+        alasan_s = ("kata positif " + ", ".join(f"'{w}'" for w in kata["positif"][:5])
+                    + " lebih dominan")
+    elif sent == "negatif" and kata["negatif"]:
+        alasan_s = ("kata negatif " + ", ".join(f"'{w}'" for w in kata["negatif"][:5])
+                    + " lebih dominan")
+    else:
+        alasan_s = "tidak ada kata sentimen yang menonjol"
+
+    penanda = settings.get("verifikasi", {}).get("penanda_bombastis", [])
+    flags = cek_headline(a.get("title") or "", ringkas, penanda)
+    verdicts = _VERDICTS.get(a.get("url"), [])
+    komp = komponen_risiko(sent, "bombastis" in flags, verdicts, analisa_cfg)
+    rincian = "; ".join(
+        f"{ket} {'+' if d >= 0 else '−'}{abs(d):g}" for ket, d in komp)
+
+    st.markdown(
+        f'<div class="mm-penjelasan">'
+        f'<b>Sentimen {sent}</b> (skor {skor_s}): {html_mod.escape(alasan_s)}.<br>'
+        f'<b>Risiko {a.get("risiko")}</b> (skor {a.get("risiko_skor", 0)}/100): '
+        f'{html_mod.escape(rincian)}.</div>',
+        unsafe_allow_html=True)
+
+    t_tinggi = float(analisa_cfg.get("ambang_risiko_tinggi", 65))
+    t_sedang = float(analisa_cfg.get("ambang_risiko_sedang", 35))
+    lvl = a.get("risiko") or "Rendah"
+    st.markdown("**🛡 SKALA RISIKO (0–100)**")
+    for nama, lo, hi, ket in [
+        ("Rendah", 0, t_sedang - 1,
+         "Minim potensi dampak buruk; umumnya kabar biasa/harian."),
+        ("Sedang", t_sedang, t_tinggi - 1,
+         "Berpotensi menimbulkan keresahan atau dampak sedang — perlu diwaspadai."),
+        ("Tinggi", t_tinggi, 100,
+         "Isu berbahaya/urgent: bencana, kecelakaan, krisis, konflik; "
+         "atau klaim belum terverifikasi + headline bombastis."),
+    ]:
+        aktif = ' mm-skala-aktif' if nama == lvl else ''
+        border = (f'border-color:{kmp.WARNA_RISIKO.get(nama, "#8ea0c9")}'
+                  if nama == lvl else '')
+        st.markdown(
+            f'<div class="mm-skala{aktif}" style="{border}">'
+            f'{kmp.pill(nama, kmp.WARNA_RISIKO.get(nama, "#8ea0c9"))} '
+            f'Skor {lo:g}–{hi:g}. {ket}</div>',
+            unsafe_allow_html=True)
+
+    amb = float(analisa_cfg.get("ambang_sentimen", 2.0))
+    st.markdown("**💬 SKALA SENTIMEN**")
+    for nama, ket in [
+        ("positif", f"Nuansa baik lebih dominan. Skor sentimen ≥ +{amb:g}."),
+        ("netral",
+         f"Isi berimbang/objektif; tidak condong. Skor antara −{amb:g} "
+         f"sampai +{amb:g}."),
+        ("negatif", f"Nuansa buruk lebih dominan. Skor sentimen ≤ −{amb:g}."),
+    ]:
+        aktif = ' mm-skala-aktif' if nama == sent else ''
+        border = (f'border-color:{kmp.WARNA_SENTIMEN.get(nama, "#8ea0c9")}'
+                  if nama == sent else '')
+        st.markdown(
+            f'<div class="mm-skala{aktif}" style="{border}">'
+            f'{kmp.pill(nama.capitalize(), kmp.WARNA_SENTIMEN.get(nama, "#8ea0c9"))} '
+            f'{ket}</div>',
+            unsafe_allow_html=True)
+
+    st.caption("Estimasi otomatis dari leksikon + sinyal verifikasi; "
+               "belum tentu 100% valid.")
+
+
 st.subheader("Berita per media")
 dist_pm = repository.distribusi_per_media(db_path)
 grid = repository.get_artikel_per_media(db_path, limit_per_media=per_media)
+_VERDICTS = repository.get_verdicts_artikel(db_path)
 names_grid = [m for m in names if m in grid]
 
 cols = st.columns(4)

@@ -47,3 +47,35 @@ def skor_risiko(
     else:
         level = "Rendah"
     return level, risiko
+
+
+def komponen_risiko(
+    sentimen: str,
+    bombastis: bool,
+    verdicts: list[str],
+    cfg: dict,
+) -> list[tuple[str, float]]:
+    """Rincian komponen rumus risiko (untuk penjelasan label).
+
+    Kembalikan list (keterangan, delta) sesuai urutan perhitungan
+    skor_risiko; base selalu ada, sisanya hanya yang aktif.
+    """
+    hasil: list[tuple[str, float]] = [("base", float(cfg.get("risiko_base", 20)))]
+    if sentimen == "negatif":
+        hasil.append(
+            ("sentimen negatif", float(cfg.get("risiko_negatif", 35))))
+    elif sentimen == "netral":
+        hasil.append(
+            ("sentimen netral", float(cfg.get("risiko_netral", 10))))
+    if bombastis:
+        hasil.append(
+            ("headline bombastis", float(cfg.get("risiko_bombastis", 20))))
+    if any(v == "belum terverifikasi" for v in verdicts):
+        hasil.append(
+            ("klaim belum terverifikasi",
+             float(cfg.get("risiko_belum_terverifikasi", 15))))
+    elif any(v == "terkoroborasi" for v in verdicts):
+        hasil.append(
+            ("klaim terkoroborasi",
+             float(cfg.get("risiko_terkoroborasi", -15))))
+    return hasil
