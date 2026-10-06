@@ -317,15 +317,22 @@ def _dialog_artikel(a: dict) -> None:
         f'Buka sumber ↗</a></div>',
         unsafe_allow_html=True,
     )
-    # Badge format referensi: "Risiko: Sedang - 50", "Sentimen: Netral"
-    lvl = a.get("risiko") or "Rendah"
-    sent = (a.get("sentimen") or "netral").capitalize()
-    st.markdown(
-        kmp.pill(f"Risiko: {lvl} - {a.get('risiko_skor', 0):g}",
-                 kmp.WARNA_RISIKO.get(a.get("risiko"), "#8ea0c9"))
-        + " " + kmp.pill(f"Sentimen: {sent}", "#b6c6f0"),
-        unsafe_allow_html=True,
-    )
+    # Badge format referensi: "Risiko: Sedang - 50", "Sentimen: Netral".
+    # Artikel yang belum dianalisa (skor NULL) tampil apa adanya, bukan crash.
+    if a.get("risiko_skor") is None:
+        pill_risiko = kmp.pill("Risiko: belum dianalisa", "#6b7280")
+    else:
+        lvl = a.get("risiko") or "Rendah"
+        pill_risiko = kmp.pill(
+            f"Risiko: {lvl} - {_fmt_skor(a.get('risiko_skor'))}",
+            kmp.WARNA_RISIKO.get(a.get("risiko"), "#8ea0c9"))
+    if a.get("sentimen") is None:
+        pill_sentimen = kmp.pill("Sentimen: belum dianalisa", "#6b7280")
+    else:
+        pill_sentimen = kmp.pill(
+            f"Sentimen: {(a.get('sentimen') or 'netral').capitalize()}",
+            "#b6c6f0")
+    st.markdown(pill_risiko + " " + pill_sentimen, unsafe_allow_html=True)
     with st.expander("❓ kenapa label ini?", expanded=False):
         _skala_penjelasan(a)
 
@@ -378,15 +385,20 @@ def _komponen_label(a: dict) -> tuple[str, str, list[tuple[str, float]]]:
     return sent, alasan, komp
 
 
+def _fmt_skor(v) -> str:
+    """Format skor numerik; None (belum dianalisa) -> '-'."""
+    return f"{v:g}" if isinstance(v, (int, float)) else "-"
+
+
 def _teks_ai(a: dict) -> str:
     """Kalimat penjelasan ala kotak AI referensi."""
     sent, alasan, komp = _komponen_label(a)
-    skor_s = a.get("sentimen_skor", 0)
-    bagian = [f"Sentimen {sent} (skor {skor_s:g}): {alasan}."]
+    skor_s = a.get("sentimen_skor")
+    bagian = [f"Sentimen {sent} (skor {_fmt_skor(skor_s)}): {alasan}."]
     rincian = "; ".join(
         f"{ket} {'+' if d >= 0 else '−'}{abs(d):g}" for ket, d in komp)
     bagian.append(
-        f"Risiko {a.get('risiko')} (skor {a.get('risiko_skor', 0):g}/100): "
+        f"Risiko {a.get('risiko')} (skor {_fmt_skor(a.get('risiko_skor'))}/100): "
         f"{rincian}.")
     return " ".join(bagian)
 

@@ -94,16 +94,22 @@ def ambil_trends(
     keywords: list[str],
     geo: str = "ID",
     timeframe: str = "today 1-m",
+    jeda_detik: float = 0,
 ) -> dict:
     """Ambil Google Trends: minat harian, per daerah, frasa terkait.
 
     Lazy import pytrends supaya test/unit tidak butuh instalasinya.
     tz=480 -> WITA (UTC+8).
+    jeda_detik: jeda antar request dalam satu topik (anti burst -> 429).
     """
+    import time
+
     from pytrends.request import TrendReq
 
     pt = TrendReq(hl="id", tz=480)
     pt.build_payload(keywords, geo=geo, timeframe=timeframe)
+    if jeda_detik:
+        time.sleep(jeda_detik)
 
     minat = pt.interest_over_time()
     minat_harian = []
@@ -116,6 +122,8 @@ def ambil_trends(
                 except (KeyError, TypeError, ValueError):
                     rec[kw] = 0
             minat_harian.append(rec)
+    if jeda_detik:
+        time.sleep(jeda_detik)
 
     daerah = pt.interest_by_region(resolution="COUNTRY", inc_low_vol=True)
     per_daerah = []
@@ -130,6 +138,8 @@ def ambil_trends(
                     rec[kw] = 0
             per_daerah.append(rec)
         per_daerah.sort(key=lambda r: r.get(keywords[0], 0), reverse=True)
+    if jeda_detik:
+        time.sleep(jeda_detik)
 
     terkait_raw = pt.related_queries()
     terkait = {}

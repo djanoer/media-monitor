@@ -127,3 +127,51 @@ def test_ekstrak_topik_fallback_ambang_rendah():
     relaxed = topik_hangat.ekstrak_topik(data, n=5, min_artikel=2, min_media=2)
     assert len(relaxed) >= len(strict)
     assert len(relaxed) > 0
+
+
+def test_ambil_trends_jeda_antar_request(monkeypatch):
+    """Jeda disebar di antara 4 request (anti burst -> 429)."""
+    import sys
+    import types
+
+    class _DF:
+        empty = True
+
+    class _FakeTrendReq:
+        def __init__(self, *a, **k):
+            self.calls = []
+
+        def build_payload(self, *a, **k):
+            self.calls.append("payload")
+
+        def interest_over_time(self):
+            self.calls.append("iot")
+            return _DF()
+
+        def interest_by_region(self, *a, **k):
+            self.calls.append("ibr")
+            return _DF()
+
+        def related_queries(self):
+            self.calls.append("rq")
+            return {}
+
+    fake_req = types.ModuleType("pytrends.request")
+    fake_req.TrendReq = _FakeTrendReq
+    fake_pkg = types.ModuleType("pytrends")
+    fake_pkg.request = fake_req
+    monkeypatch.setitem(sys.modules, "pytrends", fake_pkg)
+    monkeypatch.setitem(sys.modules, "pytrends.request", fake_req)
+
+    tidur = []
+    monkeypatch.setattr("time.sleep", lambda s: tidur.append(s))
+
+    from src.processing import respon_publik
+    respon_publik.ambil_trends(["x"], jeda_detik=3)
+    # 3 jeda: setelah payload, iot, ibr (rq terakhir tanpa jeda)
+    assert tidur == [3, 3, 3]
+
+    # tanpa jeda -> tidak tidur sama sekali
+    tidur.clear()
+    respon_publik.ambil_trends(["x"], jeda_detik=0)
+    assert tidur == []

@@ -52,6 +52,7 @@ def _ambil_trends_aman(keywords: list[str], rp: dict) -> dict:
                 keywords,
                 geo=rp.get("trends_geo", "ID"),
                 timeframe=rp.get("trends_timeframe", "today 1-m"),
+                jeda_detik=rp.get("trends_jeda_antar_request", 3),
             )
         except ImportError:
             raise
