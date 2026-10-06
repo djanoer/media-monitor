@@ -287,3 +287,32 @@ def test_start_run_tutup_siklus_terputus(tmp_path):
     n_terbuka = sqlite3.connect(db).execute(
         "SELECT COUNT(*) FROM fetch_runs WHERE finished_at IS NULL").fetchone()[0]
     assert n_terbuka == 1  # hanya siklus berjalan yang terbuka
+
+
+def test_ekspor_statis_html(tmp_path):
+    import sys
+    sys.path.insert(0, ".")
+    from scripts.ekspor_statis import ekspor
+    from src.storage import repository
+    db = str(tmp_path / "e.db")
+    repository.init_db(db)
+    repository.insert_articles(db, [
+        {"url": "u1", "media": "kompas",
+         "title": "Judul berita <b>penting</b>",
+         "summary": "ringkasan berita", "published_at": "2026-10-06T10:00:00",
+         "fetched_at": "2026-10-06T10:05:00"},
+    ])
+    repository.simpan_video_youtube(db, "banjir",
+                                   [{"video_id": "v1", "title": "Video banjir",
+                                     "channel": "ch", "published_at": None,
+                                     "view_count": 100, "like_count": 5,
+                                     "comment_count": 2}])
+    media = [{"name": "kompas", "display": "Kompas", "color": "#9775FA"}]
+    out = tmp_path / "docs" / "index.html"
+    stats = ekspor(db, out, {"storage": {"db_path": db}}, media)
+    html = out.read_text(encoding="utf-8")
+    assert stats["media"] == 1 and stats["topik"] == 1
+    assert "Kompas" in html and "Judul berita" in html
+    assert "<b>penting</b>" not in html  # di-escape
+    assert "banjir" in html and "Video banjir" in html
+    assert "WIB" in html and "Disclaimer" in html
