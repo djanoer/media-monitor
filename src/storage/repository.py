@@ -22,7 +22,12 @@ CREATE TABLE IF NOT EXISTS articles (
     summary TEXT,
     link TEXT,
     published_at TEXT,
-    fetched_at TEXT NOT NULL
+    fetched_at TEXT NOT NULL,
+    sentimen TEXT,
+    sentimen_skor REAL,
+    risiko TEXT,
+    risiko_skor REAL,
+    dianalisa_at TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_articles_media ON articles(media);
 CREATE INDEX IF NOT EXISTS idx_articles_published ON articles(published_at);
@@ -275,7 +280,8 @@ def get_latest_articles(
     """
     with _connect(db_path) as conn:
         sql = (
-            "SELECT url, media, title, summary, published_at, fetched_at"
+            "SELECT url, media, title, summary, published_at, fetched_at,"
+            " sentimen, sentimen_skor, risiko, risiko_skor"
             " FROM articles"
         )
         clauses: list[str] = []
@@ -722,3 +728,92 @@ def get_youtube_videos(
                 (topik, limit),
             )
         ]
+
+
+_KOLOM_ANALISA = [
+    ("sentimen", "TEXT"),
+    ("sentimen_skor", "REAL"),
+    ("risiko", "TEXT"),
+    ("risiko_skor", "REAL"),
+    ("dianalisa_at", "TEXT"),
+]
+
+
+def migrate_analisa(db_path: str | pathlib.Path) -> list[str]:
+    """Tambah kolom sentimen/risiko ke articles bila belum ada (idempoten)."""
+    ditambah: list[str] = []
+    with _connect(db_path) as conn:
+        ada = {r[1] for r in conn.execute("PRAGMA table_info(articles)")}
+        for nama, tipe in _KOLOM_ANALISA:
+            if nama not in ada:
+                # konstanta internal, aman dari injeksi
+                conn.execute(f"ALTER TABLE articles ADD COLUMN {nama} {tipe}")
+                ditambah.append(nama)
+    return ditambah
+
+
+def get_artikel_untuk_analisa(
+    db_path: str | pathlib.Path, force: bool = False, limit: int = 0
+) -> list[dict]:
+    """Artikel yang belum dianalisa (atau semua bila force)."""
+    with _connect(db_path) as conn:
+        q = ("SELECT url, title, summary FROM articles"
+             + ("" if force else " WHERE sentimen IS NULL")
+             + " ORDER BY published_at DESC"
+             + (f" LIMIT {int(limit)}" if limit > 0 else ""))
+        return [dict(r) for r in conn.execute(q)]
+
+
+def get_verdicts_artikel(db_path: str | pathlib.Path) -> dict[str, list[str]]:
+    """Petakan article_url -> daftar verdict cluster klaimnya."""
+    with _connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT c.article_url, cc.verdict FROM claims c"
+            " JOIN claim_clusters cc ON cc.id = c.cluster_id"
+            " WHERE cc.verdict IS NOT NULL"
+        )
+    hasil: dict[str, list[str]] = {}
+    for r in rows:
+        hasil.setdefault(r["article_url"], []).append(r["verdict"])
+    return hasil
+
+
+def simpan_analisa(
+    db_path: str | pathlib.Path,
+    url: str,
+    sentimen: str,
+    sentimen_skor: float,
+    risiko: str,
+    risiko_skor: float,
+) -> None:
+    """Simpan hasil analisa sentimen + risiko satu artikel."""
+    with _connect(db_path) as conn:
+        conn.execute(
+            "UPDATE articles SET sentimen = ?, sentimen_skor = ?,"
+            " risiko = ?, risiko_skor = ?, dianalisa_at = ? WHERE url = ?",
+            (sentimen, sentimen_skor, risiko, risiko_skor, _utcnow(), url),
+        )
+
+
+def distribusi_sentimen(db_path: str | pathlib.Path) -> dict[str, int]:
+    """Hitung artikel per label sentimen (untuk bar agregat)."""
+    with _connect(db_path) as conn:
+        return {
+            r["sentimen"]: r["n"]
+            for r in conn.execute(
+                "SELECT sentimen, COUNT(*) AS n FROM articles"
+                " WHERE sentimen IS NOT NULL GROUP BY sentimen"
+            )
+        }
+
+
+def distribusi_risiko(db_path: str | pathlib.Path) -> dict[str, int]:
+    """Hitung artikel per level risiko (untuk bar agregat)."""
+    with _connect(db_path) as conn:
+        return {
+            r["risiko"]: r["n"]
+            for r in conn.execute(
+                "SELECT risiko, COUNT(*) AS n FROM articles"
+                " WHERE risiko IS NOT NULL GROUP BY risiko"
+            )
+        }

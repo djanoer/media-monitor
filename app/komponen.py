@@ -29,8 +29,50 @@ CSS = """
 .mm-dot {width:8px; height:8px; border-radius:50%; display:inline-block;}
 .mm-ok {background:#3DDC84;} .mm-err {background:#FF6B6B;} .mm-na {background:#6c757d;}
 mark {background:#FFD43B; color:#111; border-radius:3px; padding:0 2px;}
+.mi-badge-sm {font-size:8.5px; font-weight:700; padding:2px 8px; border-radius:20px;
+  white-space:nowrap; color:#111; margin-left:6px;}
+.mi-segbar {display:flex; height:4px; border-radius:2px; overflow:hidden;
+  margin:4px 0 12px; background:rgba(255,255,255,0.06);}
+.mi-segbar span {display:block; height:100%;}
+.mi-seglabel {font-size:10px; color:#8ea0c9; text-transform:uppercase;
+  letter-spacing:.8px; margin-top:12px;}
 </style>
 """
+
+# Warna badge exact dari referensi Monitor Indonesia.
+WARNA_SENTIMEN = {"positif": "#34d399", "netral": "#b6c6f0",
+                  "negatif": "#fb7185"}
+WARNA_RISIKO = {"Tinggi": "#fb7185", "Sedang": "#fbbf24", "Rendah": "#34d399"}
+
+
+def pill(teks: str, warna: str) -> str:
+    """Pill badge kecil."""
+    return (f'<span class="mi-badge-sm" style="background:{warna}">'
+            f'{html_mod.escape(teks)}</span>')
+
+
+def bar_agregat(
+    judul: str, total: int, bagian: list[tuple[str, int, str]]
+) -> str:
+    """Bar tersegmen proporsional + legend, ala referensi Monitor Indonesia.
+
+    bagian: list (label, jumlah, warna).
+    """
+    seg = "".join(
+        f'<span style="width:{100 * n / total:.1f}%;background:{w}"'
+        f' title="{html_mod.escape(lb)}: {n}"></span>'
+        for lb, n, w in bagian if n > 0
+    ) if total > 0 else ""
+    leg = " &nbsp; ".join(
+        f'<span style="color:{w}">●</span> {html_mod.escape(lb)} {n}'
+        for lb, n, w in bagian
+    )
+    return (
+        f'<div class="mi-seglabel">{html_mod.escape(judul)}'
+        f' · {total} berita</div>'
+        f'<div style="font-size:10px;color:#8ea0c9">{leg}</div>'
+        f'<div class="mi-segbar">{seg}</div>'
+    )
 
 
 def sorot(teks_escaped: str, keyword: str | None) -> str:
@@ -58,9 +100,16 @@ def kartu_artikel(
         f'<div class="mm-card">'
         f'<div><span class="mm-badge" style="background:{col}">{badge}</span>'
         f'<span class="mm-time" title="{html_mod.escape(fmt.format_wita(pub))}">'
-        f"{html_mod.escape(fmt.waktu_relatif(pub))}</span></div>"
-        f'<div class="mm-title"><a href="{url}" target="_blank">{judul}</a></div>'
+        f"{html_mod.escape(fmt.waktu_relatif(pub))}</span>"
     )
+    if r.get("sentimen"):
+        isi += pill(r["sentimen"],
+                    WARNA_SENTIMEN.get(r["sentimen"], "#8ea0c9"))
+    if r.get("risiko"):
+        isi += pill(r["risiko"], WARNA_RISIKO.get(r["risiko"], "#8ea0c9"))
+    isi += "</div>"
+    isi += (f'<div class="mm-title"><a href="{url}" target="_blank">{judul}</a>'
+            f"</div>")
     if ringkas:
         isi += f'<div class="mm-summary">{ringkas}</div>'
     return isi + "</div>"

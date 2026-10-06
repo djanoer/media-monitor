@@ -51,5 +51,18 @@ respon_publik:
   trends_timeframe: "today 1-m"  # 1 bulan terakhir
   trends_keywords: 3             # ambil N high_precision teratas sbg keyword
 
+# Analisa sentimen + risiko per artikel (Fase F).
+analisa:
+  ambang_sentimen: 2.0   # |skor| >= ini -> positif/negatif, else netral
+  bobot_judul: 2.0       # kata di judul dihitung ganda vs isi
+  risiko_base: 20
+  risiko_negatif: 35      # sentimen negatif -> +
+  risiko_netral: 10
+  risiko_bombastis: 20    # headline bombastis -> +
+  risiko_belum_terverifikasi: 15   # klaim tak terverifikasi -> +
+  risiko_terkoroborasi: -15        # klaim terkoroborasi -> -
+  ambang_risiko_tinggi: 65
+  ambang_risiko_sedang: 35
+
 storage:
   db_path: "data/media_monitor.db"

@@ -38,8 +38,9 @@ if not db_path.exists():
     )
     st.stop()
 
-# Pastikan skema terbaru (idempoten; CREATE TABLE IF NOT EXISTS).
+# Pastikan skema terbaru (idempoten; CREATE TABLE IF NOT EXISTS + migrasi).
 repository.init_db(db_path)
+repository.migrate_analisa(db_path)
 
 media_list = load_media()
 display = {m["name"]: m["display"] for m in media_list}
@@ -104,6 +105,28 @@ counts = repository.count_by_media(db_path)
 if counts:
     st.subheader("Artikel per media")
     st.bar_chart({display.get(k, k): v for k, v in counts.items()})
+
+# ---------- agregat sentimen & risiko (ala referensi) ----------
+dist_s = repository.distribusi_sentimen(db_path)
+dist_r = repository.distribusi_risiko(db_path)
+if dist_s or dist_r:
+    tot_s = sum(dist_s.values())
+    tot_r = sum(dist_r.values())
+    b1, b2 = st.columns(2)
+    with b1:
+        st.markdown(kmp.bar_agregat(
+            "Sentimen", tot_s,
+            [("positif", dist_s.get("positif", 0), "#34d399"),
+             ("netral", dist_s.get("netral", 0), "#b6c6f0"),
+             ("negatif", dist_s.get("negatif", 0), "#fb7185")],
+        ), unsafe_allow_html=True)
+    with b2:
+        st.markdown(kmp.bar_agregat(
+            "Risiko", tot_r,
+            [("Rendah", dist_r.get("Rendah", 0), "#34d399"),
+             ("Sedang", dist_r.get("Sedang", 0), "#fbbf24"),
+             ("Tinggi", dist_r.get("Tinggi", 0), "#fb7185")],
+        ), unsafe_allow_html=True)
 
 # ---------- filter ----------
 with st.sidebar:
