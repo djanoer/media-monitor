@@ -274,177 +274,38 @@ button[data-testid="stExpandSidebarButton"]::after {content:"»";}
 
 @media(max-width:560px){.mi-hdr-name{font-size:14px;}.mi-hdr-row{font-size:9px;}.mi-meta .mi-badge-sm{font-size:9px;}[class*="st-key-mm-news-"] [data-testid="stButton"]>button p{font-size:13px!important;}}
 
-/* MM_TITLE_FIX_V2 */
-
+/* ===== Judul artikel: konsolidasi final (pengganti MM_TITLE_FIX_V2..V5) ===== */
 [class*="st-key-mm-news-"] {min-width:0!important;}
-
 [class*="st-key-mm-news-"] button {
-
- display:flex!important;align-items:flex-start!important;justify-content:flex-start!important;
-
- position:static!important;width:100%!important;max-width:100%!important;
-
- min-width:0!important;min-height:0!important;height:auto!important;
-
- padding:0!important;margin:0!important;background:transparent!important;
-
- border:0!important;border-radius:0!important;box-shadow:none!important;
-
- color:#e6ecff!important;text-align:left!important;white-space:normal!important;transform:none!important;
-
-}
-
+  display:flex!important;align-items:flex-start!important;justify-content:flex-start!important;
+  position:static!important;width:100%!important;max-width:100%!important;
+  min-width:0!important;min-height:0!important;height:auto!important;
+  padding:0!important;margin:8px 0 0!important;background:transparent!important;
+  border:0!important;border-radius:0!important;box-shadow:none!important;
+  color:#e6ecff!important;text-align:left!important;white-space:normal!important;transform:none!important;
+  font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif!important;
+  font-size:12px!important;font-weight:500!important;line-height:1.45!important;letter-spacing:normal!important;}
+[class*="st-key-mm-news-"] button * {
+  font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif!important;
+  font-size:12px!important;font-weight:500!important;
+  line-height:1.45!important;letter-spacing:normal!important;text-align:left!important;}
 [class*="st-key-mm-news-"] button [data-testid="stMarkdownContainer"] {
-
- width:100%!important;min-width:0!important;text-align:left!important;
-
-}
-
+  width:100%!important;min-width:0!important;text-align:left!important;}
 [class*="st-key-mm-news-"] button p {
-
- display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:2!important;
-
- overflow:hidden!important;max-height:2.7em!important;margin:0!important;padding:0!important;
-
- font-size:16px!important;font-weight:600!important;line-height:1.35!important;
-
- text-align:left!important;white-space:normal!important;overflow-wrap:anywhere!important;
-
-}
-
+  display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:2!important;
+  overflow:hidden!important;max-height:2.9em!important;margin:0!important;padding:0!important;
+  white-space:normal!important;overflow-wrap:anywhere!important;text-align:left!important;}
 [class*="st-key-mm-news-"] button:hover {color:#8fb0ff!important;}
-
 [class*="st-key-mm-news-"] button:focus-visible {outline:2px solid #4f8cff!important;outline-offset:2px!important;}
-
-.mi-meta {position:static!important;margin-bottom:5px!important;}
-
-@media(max-width:560px){[class*="st-key-mm-news-"] button p{font-size:13px!important;}}
-
-/* MM_TITLE_PROPORTION_V3 */
-
-[class*="st-key-mm-news-"] button,
-
-[class*="st-key-mm-news-"] button [data-testid="stMarkdownContainer"],
-
-[class*="st-key-mm-news-"] button p {
-
- font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif!important;
-
- font-size:14px!important;font-weight:600!important;
-
- line-height:1.4!important;letter-spacing:0!important;text-align:left!important;
-
-}
-
-[class*="st-key-mm-news-"] button p {
-
- display:-webkit-box!important;-webkit-box-orient:vertical!important;
-
- -webkit-line-clamp:2!important;max-height:2.8em!important;
-
- overflow:hidden!important;margin:0!important;padding:0!important;
-
-}
-
-[class*="st-key-mm-news-"] [data-testid="stButton"] {
-
- margin:0!important;padding-top:6px!important;
-
-}
-
-.mi-meta {margin:0!important;line-height:1.25!important;}
-
-.mi-meta .mi-badge-sm {
-
- font-size:10px!important;font-weight:700!important;
-
- line-height:1.25!important;padding:2px 7px!important;
-
-}
-
+[class*="st-key-mm-news-"] [data-testid="stButton"] {margin:0!important;padding-top:6px!important;}
+.mi-meta {position:static!important;display:flex!important;align-items:center!important;
+  gap:5px!important;margin:0!important;line-height:1.25!important;}
+.mi-meta .mi-badge-sm {margin:0!important;font-size:9px!important;font-weight:700!important;
+  line-height:1.25!important;padding:2px 6px!important;}
 @media(max-width:560px){
-
- [class*="st-key-mm-news-"] button,
-
- [class*="st-key-mm-news-"] button [data-testid="stMarkdownContainer"],
-
- [class*="st-key-mm-news-"] button p {font-size:13px!important;}
-
-}
-
-/* MM_TITLE_V4 */
-
-[class*="st-key-mm-news-"] button {
-
- margin-top:8px!important;padding:0!important;
-
- font-size:13px!important;font-weight:500!important;line-height:1.45!important;
-
-}
-
-[class*="st-key-mm-news-"] button * {
-
- font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif!important;
-
- font-size:13px!important;font-weight:500!important;
-
- line-height:1.45!important;letter-spacing:normal!important;
-
- text-align:left!important;
-
-}
-
-[class*="st-key-mm-news-"] button p {
-
- display:-webkit-box!important;-webkit-box-orient:vertical!important;
-
- -webkit-line-clamp:2!important;max-height:2.9em!important;
-
- overflow:hidden!important;margin:0!important;padding:0!important;
-
-}
-
-.mi-meta {margin:0!important;}
-
-.mi-meta .mi-badge-sm {
-
- font-size:9px!important;font-weight:700!important;
-
- line-height:1.25!important;padding:2px 6px!important;
-
-}
-
-/* MM_TITLE_HEADER_V5 */
-
-[class*="st-key-mm-news-"] button,
-
-[class*="st-key-mm-news-"] button * {
-
- font-size:12px!important;
-
- font-weight:500!important;
-
- line-height:1.45!important;
-
-}
-
-[class*="st-key-mm-news-"] button p {
-
- -webkit-line-clamp:2!important;
-
- max-height:2.9em!important;
-
-}
-
-/* Space outside the scrolling list, retained while scrolling. */
-
-.mi-hdr {
-
-  margin-bottom:0 !important;
-
-  padding-bottom:4px !important;
-
-}
+  [class*="st-key-mm-news-"] button,
+  [class*="st-key-mm-news-"] button [data-testid="stMarkdownContainer"],
+  [class*="st-key-mm-news-"] button p {font-size:13px!important;}}
 
 /* Ringkas tinggi header nama media */
 
@@ -592,7 +453,6 @@ button[data-testid="stExpandSidebarButton"]::after {content:"»";}
 
 
 /* Tooltip judul: gunakan teks singkat, bukan judul lengkap */
-[class*="st-key-mm-news-"] button {title:"Klik untuk baca berita";}
 </style>
 
 """, unsafe_allow_html=True)
