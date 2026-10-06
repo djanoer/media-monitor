@@ -404,21 +404,26 @@ def _teks_ai(a: dict) -> str:
 
 
 def _skala_penjelasan(a: dict) -> None:
-    """Skala risiko & sentimen ala modal 'Penjelasan Analisis' referensi."""
-    analisa_cfg = settings["analisa"]
+    """Isi expander 'kenapa label ini?' ala referensi Penjelasan Analisis."""
     sent, _, _ = _komponen_label(a)
-    t_tinggi = float(analisa_cfg.get("ambang_risiko_tinggi", 65))
-    t_sedang = float(analisa_cfg.get("ambang_risiko_sedang", 35))
     lvl = a.get("risiko") or "Rendah"
+    tanya = (f"Kenapa berita ini {sent} dengan risiko "
+             f"{(a.get('risiko') or 'rendah').lower()}?")
+    st.markdown(
+        f'<div class="mm-penjelasan"><b>🤖 {html_mod.escape(tanya)}</b>'
+        f'<br><b>AI:</b> {html_mod.escape(_teks_ai(a))}</div>',
+        unsafe_allow_html=True)
     st.markdown("**🛡 SKALA RISIKO (0–100)**")
-    for nama, lo, hi, ket in [
-        ("Rendah", 0, t_sedang - 1,
-         "Minim potensi dampak buruk; umumnya kabar biasa/harian."),
-        ("Sedang", t_sedang, t_tinggi - 1,
-         "Berpotensi menimbulkan keresahan atau dampak sedang — perlu diwaspadai."),
-        ("Tinggi", t_tinggi, 100,
-         "Isu berbahaya/urgent: bencana, kecelakaan, krisis, konflik; "
-         "atau klaim belum terverifikasi + headline bombastis."),
+    for nama, rentang, ket in [
+        ("Rendah", "0–21",
+         "Minim potensi dampak buruk atau kerugian berarti; "
+         "umumnya kabar biasa/harian."),
+        ("Sedang", "22–54",
+         "Berpotensi menimbulkan keresahan atau dampak sedang — "
+         "perlu diwaspadai."),
+        ("Tinggi", "55–100",
+         "Isu berbahaya/urgent: bencana, kecelakaan, krisis, "
+         "konflik, korupsi besar."),
     ]:
         aktif = ' mm-skala-aktif' if nama == lvl else ''
         border = (f'border-color:{kmp.WARNA_RISIKO.get(nama, "#8ea0c9")}'
@@ -426,17 +431,20 @@ def _skala_penjelasan(a: dict) -> None:
         st.markdown(
             f'<div class="mm-skala{aktif}" style="{border}">'
             f'{kmp.pill(nama, kmp.WARNA_RISIKO.get(nama, "#8ea0c9"))} '
-            f'Skor {lo:g}–{hi:g}. {ket}</div>',
+            f'Skor risiko {rentang}. {ket}</div>',
             unsafe_allow_html=True)
 
-    amb = float(analisa_cfg.get("ambang_sentimen", 2.0))
     st.markdown("**💬 SKALA SENTIMEN**")
     for nama, ket in [
-        ("positif", f"Nuansa baik lebih dominan. Skor sentimen ≥ +{amb:g}."),
+        ("positif",
+         "Nuansa baik lebih dominan (naik, untung, sukses, tumbuh, "
+         "menang, capai). Skor sentimen > +0.15."),
         ("netral",
-         f"Isi berimbang/objektif; tidak condong. Skor antara −{amb:g} "
-         f"sampai +{amb:g}."),
-        ("negatif", f"Nuansa buruk lebih dominan. Skor sentimen ≤ −{amb:g}."),
+         "Isi berimbang/objektif; tidak condong ke positif maupun "
+         "negatif. Skor antara -0.15 sampai +0.15."),
+        ("negatif",
+         "Nuansa buruk lebih dominan (krisis, korupsi, jatuh, tewas, "
+         "bencana, gagal). Skor sentimen < -0.15."),
     ]:
         aktif = ' mm-skala-aktif' if nama == sent else ''
         border = (f'border-color:{kmp.WARNA_SENTIMEN.get(nama, "#8ea0c9")}'
