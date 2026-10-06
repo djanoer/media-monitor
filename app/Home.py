@@ -9,6 +9,7 @@ app/komponen); tidak ada logika bisnis di sini.
 from __future__ import annotations
 
 import html as html_mod
+import hashlib
 import pathlib
 import sys
 
@@ -138,6 +139,19 @@ button[data-testid="stExpandSidebarButton"]::after {content:"»";}
 a.mi-judul {font-size:13px; font-weight:600; color:#e6ecff;
   line-height:1.35; margin-top:6px; display:block; text-decoration:none;}
 a.mi-judul:hover {color:#8fb0ff; text-decoration:underline;}
+/* judul sebagai st.button native -> dialog langsung tanpa navigasi */
+.mi-item div[data-testid="stButton"] {margin:6px 0 0;}
+.mi-item div[data-testid="stButton"] > button {
+  background:transparent; border:none; box-shadow:none; padding:0;
+  font-size:13px; font-weight:600; color:#e6ecff; line-height:1.35;
+  text-align:left; width:100%; min-height:0; height:auto; white-space:normal;}
+.mi-item div[data-testid="stButton"] > button:hover {
+  color:#8fb0ff; text-decoration:underline;
+  background:transparent; border:none; box-shadow:none;}
+.mi-item div[data-testid="stButton"] > button:focus {
+  box-shadow:none !important; outline:none;}
+.mi-item div[data-testid="stButton"] > button:active {
+  background:transparent; border:none;}
 .mi-item-sum {font-size:11.5px; color:#8ea0c9; line-height:1.5; margin-top:4px;
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
   overflow:hidden;}
@@ -472,26 +486,26 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Dialog detail via hyperlink judul (?art=<url>): buka saat param ada,
-# bersihkan setelah ditutup agar refresh tak membuka lagi.
-_art_param = st.query_params.get("art")
-if _art_param:
-    _target = next(
-        (a for arts in grid.values() for a in arts if a["url"] == _art_param),
-        None)
-    if _target is not None:
-        _dialog_artikel(_target)
-    st.query_params.clear()
-
 for _r in range(0, len(names_grid), 4):
     _cols = st.columns(4)
     for _col, _name in zip(_cols, names_grid[_r:_r + 4]):
         with _col:
             st.markdown(
-                kmp.kartu_media_grid(
+                kmp.buka_kartu_media(
                     _name, display[_name], warna[_name],
-                    dist_pm.get(_name, {}), grid[_name]),
+                    dist_pm.get(_name, {}), len(grid[_name])),
                 unsafe_allow_html=True)
+            for a in grid[_name]:
+                st.markdown(kmp.buka_item_artikel(a),
+                            unsafe_allow_html=True)
+                _key = ("dlg-"
+                        + hashlib.md5(a["url"].encode()).hexdigest()[:16])
+                if st.button(a.get("title") or "(tanpa judul)",
+                             key=_key, use_container_width=True):
+                    _dialog_artikel(a)
+                st.markdown(kmp.tutup_item_artikel(a),
+                            unsafe_allow_html=True)
+            st.markdown(kmp.tutup_kartu_media(), unsafe_allow_html=True)
 
 # ---------- footer ----------
 st.markdown(

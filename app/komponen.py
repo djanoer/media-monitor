@@ -128,35 +128,19 @@ def cuplikan(r: dict, max_len: int = 140) -> str:
     return html_mod.escape(teks_ringkasan_mentah(r, max_len))
 
 
-def kartu_media_grid(
+def buka_kartu_media(
     name: str, display_name: str, color: str,
-    dist: dict, arts: list[dict],
+    dist: dict, n_arts: int,
 ) -> str:
-    """Satu kartu kolom media utuh (satu blok HTML).
+    """HTML pembuka kartu kolom media: header + mini-bar + div scroll.
 
-    Header (dot + nama + count) dan mini-bar sentimen/risiko tetap di
-    atas; daftar artikel scroll mandiri (.mi-card-items). Judul berupa
-    hyperlink real (?art=<url>) yang membuka dialog detail.
+    Daftar artikel di-render oleh pemanggil sebagai st.button native per
+    judul (dialog langsung, tanpa trik ?art=), lalu tutup_kartu_media().
     """
-    from urllib.parse import quote_plus
-
     ds = (dist or {}).get("sentimen", {})
     dr = (dist or {}).get("risiko", {})
     tot_s, tot_r = sum(ds.values()), sum(dr.values())
     nama = html_mod.escape(display_name)
-    items = []
-    for a in arts:
-        col = WARNA_RISIKO.get(a.get("risiko"), "#8ea0c9")
-        judul = html_mod.escape(a.get("title") or "(tanpa judul)")
-        href = f"?art={quote_plus(a['url'])}#card-{name}"
-        cuplik = cuplikan(a)
-        sum_html = (f'<div class="mi-item-sum">{cuplik}</div>'
-                    if cuplik else "")
-        items.append(
-            f'<div class="mi-item" style="border-left-color:{col}">'
-            f'{pills_artikel(a)}'
-            f'<a class="mi-judul" href="{href}">{judul}</a>'
-            f'{sum_html}</div>')
     return (
         f'<div class="mi-card" id="card-{name}">'
         f'<div class="mi-gridhead">'
@@ -165,11 +149,60 @@ def kartu_media_grid(
         f'box-shadow:0 0 8px {color}"></span>'
         f'<span class="mi-gridname">{nama}</span>'
         f'<span class="mi-gridcount" style="background:{color}">'
-        f'{len(arts)}</span></div>'
+        f'{n_arts}</span></div>'
         f'{bar_agregat("Sentimen", tot_s, [("positif", ds.get("positif", 0), "#34d399"), ("netral", ds.get("netral", 0), "#b6c6f0"), ("negatif", ds.get("negatif", 0), "#fb7185")])}'
         f'{bar_agregat("Risiko", tot_r, [("Rendah", dr.get("Rendah", 0), "#34d399"), ("Sedang", dr.get("Sedang", 0), "#fbbf24"), ("Tinggi", dr.get("Tinggi", 0), "#fb7185")])}'
-        f'<div class="mi-card-items">{"".join(items)}</div>'
-        f'</div>'
+        f'<div class="mi-card-items">'
+    )
+
+
+def tutup_kartu_media() -> str:
+    """Penutup div scroll + div kartu (pasangan buka_kartu_media)."""
+    return "</div></div>"
+
+
+def buka_item_artikel(a: dict) -> str:
+    """HTML pembuka satu item berita: box + pills (tanpa judul).
+
+    Judul di-render pemanggil sebagai st.button native agar klik langsung
+    membuka dialog tanpa navigasi ?art=.
+    """
+    col = WARNA_RISIKO.get(a.get("risiko"), "#8ea0c9")
+    return (
+        f'<div class="mi-item" style="border-left-color:{col}">'
+        f'{pills_artikel(a)}'
+    )
+
+
+def tutup_item_artikel(a: dict) -> str:
+    """Cuplikan ringkasan + penutup div item (pasangan buka_item_artikel)."""
+    cuplik = cuplikan(a)
+    sum_html = (f'<div class="mi-item-sum">{cuplik}</div>'
+                if cuplik else "")
+    return f"{sum_html}</div>"
+
+
+def kartu_media_grid(
+    name: str, display_name: str, color: str,
+    dist: dict, arts: list[dict],
+) -> str:
+    """Satu kartu kolom media utuh (satu blok HTML).
+
+    CATATAN: tidak lagi dipakai Home.py (sudah pakai st.button native per
+    judul). Disimpan untuk kompatibilitas test; judul berupa span biasa.
+    """
+    items = []
+    for a in arts:
+        judul = html_mod.escape(a.get("title") or "(tanpa judul)")
+        items.append(
+            f"{buka_item_artikel(a)}"
+            f'<span class="mi-judul">{judul}</span>'
+            f"{tutup_item_artikel(a)}")
+    gabung = "".join(items)
+    return (
+        f"{buka_kartu_media(name, display_name, color, dist, len(arts))}"
+        f"{gabung}"
+        f"{tutup_kartu_media()}"
     )
 
 
