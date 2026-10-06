@@ -24,6 +24,7 @@ STOPWORDS_ID = frozenset(
     resmi baru viral heboh bikin ungkap minta kata ujar tegas sebut klaim
     soal terkait usai pasca jelang simak cek catat profil fakta kronologi
     bocoran sorotan potret momen detik detikcom
+    com net org co id www http https html htm
     """.split()
 )
 

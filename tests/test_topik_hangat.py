@@ -89,3 +89,31 @@ def test_repo_artikel_keyword_dan_daftar_topik(tmp_path):
                                      "view_count": 10, "like_count": 1,
                                      "comment_count": 0}])
     assert repository.daftar_topik_respon(db) == ["kebakaran hutan"]
+
+
+def test_ekstrak_topik_buang_fragmen_domain():
+    # Regresi bug 6 Okt 2026: topik "com" lolos dari judul berisi alamat situs.
+    data = [(f"Info lengkap kunjungi okezone.com dan kompas.com {i}", m)
+            for m in ("kompas", "detik") for i in range(5)]
+    top = topik_hangat.ekstrak_topik(data, n=3)
+    for t in top:
+        assert "com" not in t["topik"].split()
+        assert "www" not in t["topik"].split()
+
+
+def test_hapus_topik(tmp_path):
+    import sys
+    sys.path.insert(0, ".")
+    from scripts.bersihkan_topik import hapus_topik
+    db = str(tmp_path / "t.db")
+    repository.init_db(db)
+    repository.simpan_video_youtube(db, "com",
+                                   [{"video_id": "v1", "title": "t",
+                                     "channel": "c", "published_at": None,
+                                     "view_count": 1, "like_count": 0,
+                                     "comment_count": 0}])
+    hitung = hapus_topik(db, "com", jalan=False)
+    assert hitung["youtube_videos"] == 1
+    assert repository.daftar_topik_respon(db) == ["com"]  # belum dihapus
+    hapus_topik(db, "com", jalan=True)
+    assert repository.daftar_topik_respon(db) == []
