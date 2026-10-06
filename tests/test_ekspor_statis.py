@@ -91,6 +91,9 @@ def test_ekspor_html_memuat_semua_seksi(tmp_path):
     assert html.count("Kartu Statistik") >= 3
     assert "Apa maksudnya?" in html and "SKALA SENTIMEN" in html
     assert "SKALA RISIKO (0–100)" in html
+    # ringkasan (min 3 kalimat) + teks yang dianalisis di modal artikel
+    assert "📝 RINGKASAN" in html and "🔍 TEKS YANG DIANALISIS" in html
+    assert 'id="m-ring"' in html
     # emoji KPI + kartu distribusi
     assert "📰" in html and "😐" in html and "🛡" in html
     assert ".dist>div{background" in html.replace(" ", "")
@@ -115,18 +118,23 @@ def test_detail_artikel_tanpa_analisa(tmp_path):
          "risiko": None, "risiko_skor": None}
     d = eks._detail_artikel(a, {}, {}, "Tempo")
     assert "belum dianalisa" in d["badge_r"]
-    assert d["isi"] == [] and d["title"] == "Judul"
+    assert d["dianalisis"] == [] and d["title"] == "Judul"
 
 
-def test_kutipan_dua_tiga_kalimat():
-    isi = ("Kalimat satu soal banjir. Kalimat dua soal evakuasi! "
-           "Kalimat tiga soal bantuan? Kalimat empat tidak ikut.")
-    a = {"title": "Banjir", "summary": "", "isi_lengkap": isi}
-    k = eks._kutipan(a)
-    assert "Kalimat satu" in k and "Kalimat tiga" in k
-    assert "Kalimat empat" not in k
-    assert len(k) <= 601
-    # tanpa isi: pakai summary; summary duplikat judul -> kosong
-    assert eks._kutipan({"title": "T", "summary": "", "isi_lengkap": ""}) == ""
-    assert eks._kutipan({"title": "Sama", "summary": "Sama",
-                         "isi_lengkap": ""}) == ""
+def test_kalimat_awal_dan_teks_dianalisis():
+    isi = ("Satu. Dua! Tiga? Empat. Lima. Enam tidak ikut.")
+    a = {"title": "Banjir", "summary": "<p>Ringkasan RSS banjir.</p>",
+         "isi_lengkap": isi}
+    r = eks._kalimat_awal(a, max_kalimat=5, max_len=900)
+    assert "Lima." in r and "Enam" not in r
+    assert eks._kalimat_awal({"title": "T", "isi_lengkap": ""}, 5, 900) == ""
+    # teks yang benar-benar dihitung = summary RSS (bersih HTML)
+    assert eks._teks_dianalisis(a) == "Ringkasan RSS banjir."
+    d = eks._detail_artikel(
+        dict(a, url="u", media="tempo", sentimen="negatif",
+             sentimen_skor=-3.0, risiko="Tinggi", risiko_skor=80.0),
+        {"analisa": {}, "verification": {}}, {}, "Tempo")
+    assert d["dianalisis"] == ["Ringkasan RSS banjir."]
+    assert len(d["ringkasan"]) == 1 and "Lima." in d["ringkasan"][0]
+    # kata berpengaruh kini dari summary (yg dihitung), bukan isi_lengkap
+    assert "banjir" in d["ai"].lower()

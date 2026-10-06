@@ -29,7 +29,6 @@ from src.processing.risiko import komponen_risiko
 from src.processing.sentimen import kata_berpengaruh
 from src.processing.verification import cek_headline
 from src.storage import repository
-from app.komponen import mirip_judul, teks_ringkasan_mentah
 
 WITA = timezone(timedelta(hours=8))
 UTC = timezone.utc
@@ -104,20 +103,26 @@ def _fmt_skor(v) -> str:
     return f"{v:g}" if isinstance(v, (int, float)) else "-"
 
 
-def _kutipan(a: dict, max_kalimat: int = 3, max_len: int = 600) -> str:
-    """Kutipan 2-3 kalimat untuk modal detail (bukan full isi)."""
+def _kalimat_awal(a: dict, max_kalimat: int, max_len: int) -> str:
+    """Ambil N kalimat pertama isi_lengkap untuk ringkasan baca.
+
+    '' bila isi belum diunduh (pemanggil menyembunyikan seksi).
+    """
     isi = (a.get("isi_lengkap") or "").strip()
-    if isi:
-        kal = [k.strip() for k in re.split(r"(?<=[.!?])\s+", isi)
-               if k.strip()]
-        teks = " ".join(kal[:max_kalimat]).strip()
-    else:
-        teks = bersihkan_html(a.get("summary") or "").strip()
-        if mirip_judul(teks, a.get("title")):
-            teks = ""
+    if not isi:
+        return ""
+    kal = [k.strip() for k in re.split(r"(?<=[.!?])\s+", isi) if k.strip()]
+    teks = " ".join(kal[:max_kalimat]).strip()
     if len(teks) > max_len:
         teks = teks[:max_len].rsplit(" ", 1)[0] + "…"
     return teks
+
+
+def _teks_dianalisis(a: dict) -> str:
+    """Teks yang BENAR-BENAR dihitung sistem (sama persis dgn siklus_analisa
+    di src/processing/analisa.py): judul + summary RSS, bukan isi_lengkap.
+    """
+    return bersihkan_html(a.get("summary") or "").strip()
 
 
 def _skala_risiko_html(lvl: str) -> str:
@@ -170,9 +175,12 @@ def _detail_artikel(a: dict, settings: dict, verdicts: dict,
                     display: str) -> dict:
     """Bahan modal detail artikel (precompute, ala dialog lokal)."""
     analisa_cfg = settings.get("analisa", {})
-    ringkas = teks_ringkasan_mentah(a, max_len=2000)
+    judul = a.get("title") or ""
+    # Teks yang benar-benar dihitung (sinkron dgn siklus_analisa):
+    # judul + summary RSS.
+    ringkas = _teks_dianalisis(a)
     kata = kata_berpengaruh(
-        a.get("title") or "", ringkas,
+        judul, ringkas,
         bobot_judul=float(analisa_cfg.get("bobot_judul", 2.0)))
     sent = a.get("sentimen") or "netral"
     if sent == "positif" and kata["positif"]:
@@ -186,7 +194,7 @@ def _detail_artikel(a: dict, settings: dict, verdicts: dict,
     else:
         alasan = "tidak ada kata sentimen yang menonjol"
     penanda = settings.get("verification", {}).get("penanda_bombastis", [])
-    flags = cek_headline(a.get("title") or "", ringkas, penanda)
+    flags = cek_headline(judul, ringkas, penanda)
     komp = komponen_risiko(sent, "bombastis" in flags,
                            verdicts.get(a.get("url"), []), analisa_cfg)
     rincian = "; ".join(
@@ -205,8 +213,9 @@ def _detail_artikel(a: dict, settings: dict, verdicts: dict,
            f'<div class="skhead">💬 SKALA SENTIMEN</div>'
            + _skala_sentimen_html(sent))
 
-    # Teks yang ditampilkan di modal: kutipan 2-3 kalimat (bukan full isi).
-    kutipan = _kutipan(a)
+    # Ringkasan baca (min 3 kalimat) dari isi_lengkap bila sudah diunduh.
+    # Teks yang dianalisis = summary RSS (yang benar-benar dihitung).
+    ringkasan = _kalimat_awal(a, max_kalimat=5, max_len=900)
     return {
         "media": display,
         "url": a.get("url") or "",
@@ -216,7 +225,8 @@ def _detail_artikel(a: dict, settings: dict, verdicts: dict,
         "ai": ai,
         "why": why,
         "pub": a.get("published_at") or "",
-        "isi": [kutipan] if kutipan else [],
+        "ringkasan": [ringkasan] if ringkasan else [],
+        "dianalisis": [ringkas] if ringkas else [],
     }
 
 
@@ -454,6 +464,8 @@ ul{margin:4px 0;padding-left:18px;font-size:.85rem;color:#c6d2e8}
 .mai{background:#1a2240;border:1px solid #2a3a66;border-radius:10px;padding:12px 14px;margin:12px 0;font-size:.9rem;line-height:1.6;color:#c6d2e8}
 .mpub{color:#6b7280;font-size:.8rem;margin-bottom:12px}
 .misi p{margin:0 0 14px;line-height:1.7;color:#dbe3f5;font-size:.82rem;text-align:justify}
+.mseclbl{font-size:.72rem;letter-spacing:2px;color:#8ea0c9;margin:16px 0 6px}
+.mring p{margin:0 0 10px;line-height:1.7;color:#dbe3f5;font-size:.92rem;text-align:justify}
 .skala{border:1px solid #2a3352;border-radius:8px;padding:8px 12px;margin:6px 0;font-size:.85rem;color:#c6d2e8}
 .skala.on{border-width:2px}
 .skala b{color:#e6ebf5}
@@ -658,7 +670,8 @@ def ekspor(db_path, out_path: Path, settings: dict,
 <div class="mtitle" id="m-title"></div>
 <div class="mai" id="m-ai"></div>
 <div class="mpub" id="m-pub"></div>
-<div class="misi" id="m-isi"></div>
+<div class="mseclbl">📝 RINGKASAN</div><div class="mring" id="m-ring"></div>
+<div class="mseclbl">🔍 TEKS YANG DIANALISIS</div><div class="misi" id="m-isi"></div>
 </div></div>
 {stat_modals}
 <script type="application/json" id="adata">{adata}</script>
@@ -689,7 +702,11 @@ document.getElementById('m-ai').innerHTML='<b>AI:</b> '+esc(d.ai);
 document.getElementById('mwhybody').innerHTML=d.why;
 document.getElementById('mwhybody').hidden=true;
 document.getElementById('m-pub').textContent=d.pub?('Dipublikasikan: '+d.pub):'';
-document.getElementById('m-isi').innerHTML=d.isi.map(function(p){{return '<p>'+esc(p)+'</p>';}}).join('');
+var rg=document.getElementById('m-ring');
+rg.innerHTML=d.ringkasan.map(function(p){{return '<p>'+esc(p)+'</p>';}}).join('');
+var rgl=rg.previousElementSibling;rgl.style.display=rg.style.display=d.ringkasan.length?'':'none';
+var an=document.getElementById('m-isi');
+an.innerHTML=d.dianalisis.map(function(p){{return '<p>'+esc(p)+'</p>';}}).join('')||'<p class="muted">Hanya judul yang dihitung (ringkasan kosong).</p>';
 back.classList.add('open');document.body.style.overflow='hidden';}}
 document.querySelectorAll('.tlink').forEach(function(b){{
 b.addEventListener('click',function(){{openM(+b.dataset.i);}});}});
