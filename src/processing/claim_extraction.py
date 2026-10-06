@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import re
 
+from src.common.text import bersihkan_html
+
 _PEMECAH_KALIMAT = re.compile(r"(?<=[.!?])\s+")
 _ANGKA = re.compile(r"\d")
 
@@ -41,7 +43,10 @@ def extract_claims(
 
     terlihat = {judul.lower()}
     diambil = 0
-    for kalimat in split_sentences(artikel.get("summary") or ""):
+    # Ringkasan RSS mentah mengandung tag HTML (<img>, <a href>) yang URL-nya
+    # mengandung angka -> wajib dibersihkan dulu agar tidak jadi klaim sampah.
+    ringkasan_bersih = bersihkan_html(artikel.get("summary"))
+    for kalimat in split_sentences(ringkasan_bersih):
         if diambil >= max_sentences:
             break
         if len(kalimat) < min_length:

@@ -499,3 +499,19 @@ def count_claims(db_path: str | pathlib.Path) -> int:
     with _connect(db_path) as conn:
         row = conn.execute("SELECT COUNT(*) AS n FROM claims").fetchone()
         return row["n"]
+
+
+def reset_claims(db_path: str | pathlib.Path) -> tuple[int, int]:
+    """Hapus SEMUA klaim + cluster. Dipakai untuk run ulang bersih.
+
+    Kembalikan (jumlah_klaim_dihapus, jumlah_cluster_dihapus).
+    Hanya dipanggil eksplisit via flag --reset; bukan bagian run normal.
+    """
+    with _connect(db_path) as conn:
+        n_klaim = conn.execute("SELECT COUNT(*) AS n FROM claims").fetchone()["n"]
+        n_cluster = conn.execute(
+            "SELECT COUNT(*) AS n FROM claim_clusters"
+        ).fetchone()["n"]
+        conn.execute("DELETE FROM claims")
+        conn.execute("DELETE FROM claim_clusters")
+        return n_klaim, n_cluster

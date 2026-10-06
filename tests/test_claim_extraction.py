@@ -50,3 +50,15 @@ def test_tanpa_judul_tanpa_klaim():
 
 def test_split_sentences():
     assert split_sentences("Satu. Dua! Tiga?") == ["Satu.", "Dua!", "Tiga?"]
+
+
+def test_html_di_ringkasan_dibersihkan_dulu():
+    # URL <img>/<a> mengandung angka -> tanpa dibersihkan jadi klaim sampah
+    klaim = extract_claims({
+        "title": "Kabut Asap Ganggu Penerbangan",
+        "summary": '<img src="https://akcdn.detik.net.id/visual/2026/08/24/foto-17.jpg"/>'
+                   ' Bandara tutup sementara.',
+    })
+    for k in klaim:
+        assert "<img" not in k["claim_text"]
+        assert "akcdn.detik.net.id" not in k["claim_text"]

@@ -7,8 +7,8 @@ dan format waktu relatif Bahasa Indonesia.
 from __future__ import annotations
 
 import datetime
-import html
-import re
+
+from src.common.text import bersihkan_html
 
 # WITA = UTC+8 tetap, tanpa daylight saving.
 WITA_OFFSET = datetime.timedelta(hours=8)
@@ -19,17 +19,8 @@ BULAN_ID = [
 ]
 
 
-def bersihkan_html(teks: str | None) -> str:
-    """Buang tag HTML dan entity dari ringkasan RSS.
-
-    Contoh: '<img src="..."/> WNA Malaysia ...' -> 'WNA Malaysia ...'.
-    Kembalikan teks polos satu baris.
-    """
-    if not teks:
-        return ""
-    s = html.unescape(teks)
-    s = re.sub(r"<[^>]+>", " ", s)
-    return " ".join(s.split())
+# bersihkan_html diimpor dari src.common.text di atas
+# (nama tetap tersedia sebagai fmt.bersihkan_html untuk kompatibilitas).
 
 
 def parse_utc(iso: str | None) -> datetime.datetime | None:

@@ -19,7 +19,7 @@ clustering:
 
 # Verifikasi klaim (Fase B): ekstraksi klaim + dedup semantik.
 verification:
-  similarity_threshold: 0.80  # cosine >= ini -> satu cluster klaim
+  similarity_threshold: 0.90  # cosine >= ini -> satu cluster klaim
   claim_max_sentences: 3      # kalimat kunci maks per artikel (selain judul)
   claim_min_length: 20        # kalimat lebih pendek dari ini diabaikan
 

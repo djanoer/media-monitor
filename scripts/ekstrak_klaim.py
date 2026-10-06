@@ -44,6 +44,8 @@ def main() -> int:
                     help="override verification.similarity_threshold")
     ap.add_argument("--hari", type=int, default=None,
                     help="jendela hari (default: retention_days)")
+    ap.add_argument("--reset", action="store_true",
+                    help="hapus SEMUA klaim+cluster dulu (run ulang bersih)")
     args = ap.parse_args()
 
     topics = load_topics()
@@ -63,6 +65,9 @@ def main() -> int:
     model_name = settings["clustering"]["embedding_model"]
 
     repository.init_db(db_path)
+    if args.reset:
+        n_klaim, n_cluster = repository.reset_claims(db_path)
+        print(f"RESET: {n_klaim} klaim + {n_cluster} cluster dihapus.")
     artikel = repository.get_articles_since(db_path, _sejak_iso(hari))
     cocok = [a for a in artikel if match_topic(teks_artikel(a), spec)]
     print(f"Artikel topik '{args.topik}': {len(cocok)} dari {len(artikel)}")
