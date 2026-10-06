@@ -378,7 +378,7 @@ def _komponen_label(a: dict) -> tuple[str, str, list[tuple[str, float]]]:
                   + " lebih dominan")
     else:
         alasan = "tidak ada kata sentimen yang menonjol"
-    penanda = settings.get("verifikasi", {}).get("penanda_bombastis", [])
+    penanda = settings.get("verification", {}).get("penanda_bombastis", [])
     flags = cek_headline(a.get("title") or "", ringkas, penanda)
     verdicts = _VERDICTS.get(a.get("url"), [])
     komp = komponen_risiko(sent, "bombastis" in flags, verdicts, analisa_cfg)
