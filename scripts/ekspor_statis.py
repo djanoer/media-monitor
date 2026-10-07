@@ -593,7 +593,7 @@ def ekspor(db_path, out_path: Path, settings: dict,
         print(f"Retensi: {n_hapus} artikel >30 hari dihapus", flush=True)
     m = _metrik(db_path, media_list)
     n_ai = _isi_ringkasan_ai(db_path, settings)
-    per_media = repository.get_artikel_per_media(db_path, limit_per_media=8)
+    per_media = repository.get_artikel_per_media(db_path, limit_per_media=10)
     topiks = repository.daftar_topik_respon(db_path)
 
     now = datetime.now(WIB)
