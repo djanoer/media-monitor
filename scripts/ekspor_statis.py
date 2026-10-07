@@ -508,8 +508,8 @@ body{background:#0a0f1e;color:#e6ebf5;font-family:system-ui,-apple-system,'Segoe
 .dist>div{background:#101737;border:1px solid #1e2745;border-radius:12px;padding:16px}
 @media(max-width:800px){.dist{grid-template-columns:1fr}}
 .dhead{font-size:.72rem;color:#8ea0c9;letter-spacing:2px;margin-bottom:8px}
-.drow{display:flex;align-items:center;gap:12px}
-.drow .dhead{margin-bottom:0;white-space:nowrap;min-width:140px}
+.drow{display:flex;align-items:center;gap:8px}
+.drow .dhead{margin-bottom:0;white-space:nowrap;min-width:85px}
 .drow .dbar{flex:1}
 .legend{display:flex;gap:16px;font-size:.82rem;color:#c6d2e8;margin-bottom:8px;flex-wrap:wrap}
 .legend i{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
