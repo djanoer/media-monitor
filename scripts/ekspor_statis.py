@@ -508,6 +508,9 @@ body{background:#0a0f1e;color:#e6ebf5;font-family:system-ui,-apple-system,'Segoe
 .dist>div{background:#101737;border:1px solid #1e2745;border-radius:12px;padding:16px}
 @media(max-width:800px){.dist{grid-template-columns:1fr}}
 .dhead{font-size:.72rem;color:#8ea0c9;letter-spacing:2px;margin-bottom:8px}
+.drow{display:flex;align-items:center;gap:12px}
+.drow .dhead{margin-bottom:0;white-space:nowrap;min-width:140px}
+.drow .dbar{flex:1}
 .legend{display:flex;gap:16px;font-size:.82rem;color:#c6d2e8;margin-bottom:8px;flex-wrap:wrap}
 .legend i{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
 .dbar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:#232c4d}
@@ -711,21 +714,11 @@ def ekspor(db_path, out_path: Path, settings: dict,
                           ("mstat-r", stat_risiko)])
 
     dist = (
-        f'<div class="dist"><div>'
-        f'<div class="dhead">SENTIMEN · {_ribu(m["total"])} BERITA</div>'
-        f'<div class="legend">'
-        f'<span><i style="background:{WARNA_SENTIMEN["positif"]}"></i>positif {_ribu(m["ps"])}</span>'
-        f'<span><i style="background:{WARNA_SENTIMEN["netral"]}"></i>netral {_ribu(m["nt"])}</span>'
-        f'<span><i style="background:{WARNA_SENTIMEN["negatif"]}"></i>negatif {_ribu(m["ng"])}</span>'
-        f'</div>'
+        f'<div class="dist"><div class="drow">'
+        f'<div class="dhead">SENTIMEN</div>'
         f'{_bar([(m["ps"], WARNA_SENTIMEN["positif"]), (m["nt"], WARNA_SENTIMEN["netral"]), (m["ng"], WARNA_SENTIMEN["negatif"])], cls="dbar")}'
-        f'</div><div>'
-        f'<div class="dhead">RISIKO · {_ribu(m["total"])} BERITA</div>'
-        f'<div class="legend">'
-        f'<span><i style="background:{WARNA_RISIKO["Rendah"]}"></i>Rendah {_ribu(m["rr"])}</span>'
-        f'<span><i style="background:{WARNA_RISIKO["Sedang"]}"></i>Sedang {_ribu(m["rs"])}</span>'
-        f'<span><i style="background:{WARNA_RISIKO["Tinggi"]}"></i>Tinggi {_ribu(m["rt"])}</span>'
-        f'</div>'
+        f'</div><div class="drow">'
+        f'<div class="dhead">RISIKO</div>'
         f'{_bar([(m["rr"], WARNA_RISIKO["Rendah"]), (m["rs"], WARNA_RISIKO["Sedang"]), (m["rt"], WARNA_RISIKO["Tinggi"])], cls="dbar")}'
         f'</div></div>')
 
