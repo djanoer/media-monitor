@@ -114,9 +114,12 @@ def format_pesan(berita: list[dict]) -> str:
             lines.append(f"   {ringkasan}")
         lines.append(f"   🔗 <a href=\"{url}\">Baca selengkapnya</a>")
         lines.append("")
+    lines.append("")
     lines.append("—")
+    lines.append("")
     lines.append("🔗 <a href=\"https://djanoer.github.io/media-monitor/\">Media Monitor</a>")
-    lines.append("<i>Disusun otomatis</i>")
+    lines.append("")
+    lines.append("<i>Disusun otomatis dari Media Monitor</i>")
     return "\n".join(lines)
 
 
