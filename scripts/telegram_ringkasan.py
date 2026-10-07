@@ -95,7 +95,7 @@ def format_pesan(berita: list[dict]) -> str:
     """Format pesan elegan dengan judul klikable."""
     now = datetime.now(WIB)
     lines = [
-        f"📰 <b>MEDIA MONITOR</b>",
+        f"📰 <b>RINGKASAN BERITA</b>",
         f"📅 {tgl_id(now)} · Geopolitik & Teknologi",
         "",
     ]
@@ -115,8 +115,8 @@ def format_pesan(berita: list[dict]) -> str:
         lines.append(f"   🔗 <a href=\"{url}\">Baca selengkapnya</a>")
         lines.append("")
     lines.append("—")
-    lines.append("🔗 <a href=\"https://djanoer.github.io/media-monitor/\">Dashboard lengkap</a>")
-    lines.append("<i>Disusun otomatis oleh Media Monitor</i>")
+    lines.append("🔗 <a href=\"https://djanoer.github.io/media-monitor/\">Media Monitor</a>")
+    lines.append("<i>Disusun otomatis</i>")
     return "\n".join(lines)
 
 
