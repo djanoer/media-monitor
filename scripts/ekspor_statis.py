@@ -501,7 +501,10 @@ body{background:#0a0f1e;color:#e6ebf5;font-family:system-ui,-apple-system,'Segoe
 .kpi-btn:hover{border-color:#33406b;transform:translateY(-2px)}
 .mbar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:#232c4d}
 .mbar div{height:100%}
-.dist{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px;position:sticky;top:0;z-index:11;background:#0a0f1ef2;backdrop-filter:blur(8px);padding:12px 24px;margin:0 -20px 8px;border-bottom:1px solid #1e2745}
+.dist{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px}
+.stickyhead{position:sticky;top:0;z-index:10;background:#0a0f1ef2;backdrop-filter:blur(8px);margin:0 -20px;padding:12px 24px 0;border-bottom:1px solid #1e2745}
+.stickyhead .dist{margin:0 0 8px;padding:0;border:0;background:transparent}
+.stickyhead .topnav{position:static;margin:0;padding:10px 0}
 .dist>div{background:#101737;border:1px solid #1e2745;border-radius:12px;padding:16px}
 @media(max-width:800px){.dist{grid-template-columns:1fr}}
 .dhead{font-size:.72rem;color:#8ea0c9;letter-spacing:2px;margin-bottom:8px}
@@ -511,7 +514,7 @@ body{background:#0a0f1e;color:#e6ebf5;font-family:system-ui,-apple-system,'Segoe
 .dbar div{height:100%}
 h2.sec{margin:30px 0 14px;font-size:1.15rem;display:flex;align-items:center;gap:10px}
 h2.sec::before{content:"";width:4px;height:1.2em;background:linear-gradient(#4dabf7,#9775fa);border-radius:2px}
-.topnav{position:sticky;top:78px;z-index:10;background:#0a0f1ee6;backdrop-filter:blur(8px);padding:10px 4px;display:flex;gap:18px;border-bottom:1px solid #1e2745;margin:0 -20px;padding-left:24px}
+.topnav{display:flex;gap:18px}
 .topnav a{color:#9ca3af;text-decoration:none;font-size:.85rem;font-weight:600}
 .topnav a:hover{color:#7dd3fc}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
@@ -759,8 +762,8 @@ def ekspor(db_path, out_path: Path, settings: dict,
 </div>
 </div>
 <div class="kpis">{kpi1}{kpi2}{kpi3}</div>
-{dist}
-<nav class="topnav"><a href="#berita">📰 Berita per media</a><a href="#respons">📊 Respons Publik</a></nav>
+<div class="stickyhead">{dist}
+<nav class="topnav"><a href="#berita">📰 Berita per media</a><a href="#respons">📊 Respons Publik</a></nav></div>
 <h2 class="sec" id="berita">Berita per media</h2>
 <div class="grid">{cards}</div>
 <h2 class="sec" id="respons">Respons Publik</h2>
