@@ -1,7 +1,9 @@
-"""Ringkasan AI via Groq API (gratis, cloud).
+"""Ringkasan AI via API OpenAI-compatible (Groq / Top Tools AI).
 
-Sengaja hanya pakai stdlib (urllib) agar jalan di laptop Bor tanpa
-dependensi tambahan. API key dibaca dari env GROQ_API_KEY (bisa via .env).
+Sengaja hanya pakai stdlib (urllib) agar jalan tanpa dependensi tambahan.
+Provider dipilih via env:
+  TOPTOOLS_API_KEY (+ opsional TOPTOOLS_API_URL, TOPTOOLS_MODEL)
+  GROQ_API_KEY (+ opsional GROQ_MODEL) — fallback / kompatibilitas laptop.
 
 Best-effort: semua kegagalan (tanpa key, timeout, 429/kuota, respons aneh)
 mengembalikan None — pemanggil WAJIB fallback ke ringkasan ekstraktif,
@@ -19,12 +21,14 @@ log = logging.getLogger("media_monitor")
 
 
 class RateLimitError(Exception):
-    """Groq mengembalikan HTTP 429 (rate limit). Layak dicoba lagi
+    """API mengembalikan HTTP 429 (rate limit). Layak dicoba lagi
     setelah menunggu — berbeda dengan gagal lain (401/timeout) yang
     langsung mengembalikan None."""
 
-API_URL = "https://api.groq.com/openai/v1/chat/completions"
+API_URL_GROQ = "https://api.groq.com/openai/v1/chat/completions"
+API_URL_TOPTOOLS = "https://top-tools-ai.com/v1/chat/completions"
 MODEL_DEFAULT = "qwen/qwen3.8-27b"
+MODEL_DEFAULT_TOPTOOLS = "top-tools-ai"  # model gratis 10M token/hari
 UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/131.0 Safari/537.36")
 
@@ -42,8 +46,9 @@ def ringkas_artikel(
     model: str = MODEL_DEFAULT,
     max_tokens: int = 300,
     timeout: int = 60,
+    api_url: str = API_URL_GROQ,
 ) -> str | None:
-    """Minta ringkasan ke Groq. Kembalikan teks ringkasan atau None."""
+    """Minta ringkasan ke API OpenAI-compatible. Kembalikan teks atau None."""
     if not api_key or not (isi or "").strip():
         return None
     prompt = PROMPT_TEMPLATE.format(
@@ -57,7 +62,7 @@ def ringkas_artikel(
         "temperature": 0.3,
     }).encode("utf-8")
     req = urllib.request.Request(
-        API_URL, data=body,
+        api_url, data=body,
         headers={"Content-Type": "application/json",
                  "Authorization": f"Bearer {api_key}",
                  "User-Agent": UA},

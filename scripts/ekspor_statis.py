@@ -189,18 +189,32 @@ def _skala_sentimen_html(sent: str) -> str:
 
 
 def _isi_ringkasan_ai(db_path, settings: dict) -> int:
-    """Isi cache ringkasan_ai via Groq untuk artikel terbaru yg belum punya.
+    """Isi cache ringkasan_ai via API OpenAI-compatible untuk artikel terbaru.
 
+    Provider: TOPTOOLS_API_KEY (prioritas) atau GROQ_API_KEY (fallback).
     Best-effort: tanpa key / gagal / 429 -> berhenti diam-diam, ekspor tetap
     jalan dengan ringkasan ekstraktif. Kembalikan jumlah yg berhasil.
     """
     cfg = settings.get("ringkasan_ai") or {}
     if not cfg.get("aktif", True):
         return 0
-    api_key = os.environ.get("GROQ_API_KEY", "").strip()
+    from src.processing.llm_groq import (
+        API_URL_GROQ, API_URL_TOPTOOLS, MODEL_DEFAULT_TOPTOOLS,
+    )
+    api_key = os.environ.get("TOPTOOLS_API_KEY", "").strip()
+    api_url = os.environ.get("TOPTOOLS_API_URL", "").strip() or API_URL_TOPTOOLS
+    env_model = os.environ.get("TOPTOOLS_MODEL", "").strip() or MODEL_DEFAULT_TOPTOOLS
+    if api_key:
+        provider = "Top Tools AI"
+    else:
+        api_key = os.environ.get("GROQ_API_KEY", "").strip()
+        api_url = API_URL_GROQ
+        env_model = ""
+        provider = "Groq"
     if not api_key:
-        print("Ringkasan AI dilewati (GROQ_API_KEY tidak ada)", flush=True)
+        print("Ringkasan AI dilewati (tidak ada API key)", flush=True)
         return 0
+    print(f"Ringkasan AI via {provider}...", flush=True)
     repository.migrate_ringkasan_ai(db_path)
     maks_umur = int(cfg.get("maks_umur_jam", 24))
     antre = repository.artikel_tanpa_ringkasan_ai(
@@ -209,7 +223,7 @@ def _isi_ringkasan_ai(db_path, settings: dict) -> int:
     if not antre:
         return 0
     jeda = float(cfg.get("jeda_detik", 3))
-    model = cfg.get("model", "qwen/qwen3.8-27b")
+    model = env_model or cfg.get("model", "qwen/qwen3.8-27b")
     max_tokens = int(cfg.get("max_tokens", 300))
     max_retry = int(cfg.get("retry_429", 3))
     tunggu_awal = float(cfg.get("tunggu_awal_detik", 60))
@@ -226,7 +240,8 @@ def _isi_ringkasan_ai(db_path, settings: dict) -> int:
             try:
                 teks = ringkas_artikel(
                     a.get("title") or "", a.get("isi_lengkap") or "",
-                    api_key, model=model, max_tokens=max_tokens)
+                    api_key, model=model, max_tokens=max_tokens,
+                    api_url=api_url)
                 break
             except RateLimitError:
                 if attempt >= max_retry:
