@@ -315,7 +315,7 @@ def _detail_artikel(a: dict, settings: dict, verdicts: dict,
         "badge_s": _badge_sentimen(a.get("sentimen")),
         "ai": ai,
         "why": why,
-        "pub": a.get("published_at") or "",
+        "pub": _waktu_artikel(a.get("published_at")),
         "ringkasan": [ringkasan] if ringkasan else [],
         "ringkasan_ai": bool(ringkasan_ai),
         "dianalisis": [ringkas] if ringkas else [],
@@ -514,6 +514,10 @@ h2.sec::before{content:"";width:4px;height:1.2em;background:linear-gradient(#4da
 .topnav{position:sticky;top:0;z-index:10;background:#0a0f1ee6;backdrop-filter:blur(8px);padding:10px 4px;display:flex;gap:18px;border-bottom:1px solid #1e2745;margin:0 -20px;padding-left:24px}
 .topnav a{color:#9ca3af;text-decoration:none;font-size:.85rem;font-weight:600}
 .topnav a:hover{color:#7dd3fc}
+.topnav .navstat{margin-left:auto;display:flex;gap:14px;align-items:center;padding-right:20px}
+.topnav .ns{display:flex;gap:4px;align-items:center;font-size:.75rem;color:#9ca3af;font-weight:600}
+.topnav .ns i{width:8px;height:8px;border-radius:50%;display:inline-block;margin-left:6px}
+.topnav .ns i:first-child{margin-left:0}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
 @media(max-width:1200px){.grid{grid-template-columns:repeat(3,1fr);}}
 @media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr);}}
@@ -760,7 +764,7 @@ def ekspor(db_path, out_path: Path, settings: dict,
 </div>
 <div class="kpis">{kpi1}{kpi2}{kpi3}</div>
 {dist}
-<nav class="topnav"><a href="#berita">📰 Berita per media</a><a href="#respons">📊 Respons Publik</a></nav>
+<nav class="topnav"><a href="#berita">📰 Berita per media</a><a href="#respons">📊 Respons Publik</a><span class="navstat"><span class="ns" title="Sentimen"><i style="background:{WARNA_SENTIMEN["positif"]}"></i>{_ribu(m["ps"])}<i style="background:{WARNA_SENTIMEN["netral"]}"></i>{_ribu(m["nt"])}<i style="background:{WARNA_SENTIMEN["negatif"]}"></i>{_ribu(m["ng"])}</span><span class="ns" title="Risiko"><i style="background:{WARNA_RISIKO["Rendah"]}"></i>{_ribu(m["rr"])}<i style="background:{WARNA_RISIKO["Sedang"]}"></i>{_ribu(m["rs"])}<i style="background:{WARNA_RISIKO["Tinggi"]}"></i>{_ribu(m["rt"])}</span></span></nav>
 <h2 class="sec" id="berita">Berita per media</h2>
 <div class="grid">{cards}</div>
 <h2 class="sec" id="respons">Respons Publik</h2>
