@@ -503,7 +503,7 @@ body{background:#0a0f1e;color:#e6ebf5;font-family:system-ui,-apple-system,'Segoe
 .mbar div{height:100%}
 .dist{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px}
 .stickyhead{position:sticky;top:0;z-index:10;background:#0a0f1ef2;backdrop-filter:blur(8px);margin:0 -20px;padding:12px 24px 0;border-bottom:1px solid #1e2745}
-.stickyhead .dist{margin:0 0 8px;padding:0;border:0;background:transparent}
+.stickyhead .dist{margin:0 0 8px;padding:0 0 12px;border:0;border-bottom:1px solid #2a3352;background:transparent}
 .stickyhead .topnav{position:static;margin:0;padding:10px 0}
 .dist>div{background:#101737;border:1px solid #1e2745;border-radius:12px;padding:16px}
 @media(max-width:800px){.dist{grid-template-columns:1fr}}
