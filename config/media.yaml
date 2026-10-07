@@ -113,3 +113,45 @@ media:
     feed: "https://news.google.com/rss/search?q=site:suara.com&hl=id&gl=ID&ceid=ID:id"
     type: gnews
     active: true
+  - name: reuters
+    display: Reuters
+    tier: 1
+    color: "#FF6B00"
+    feed: "https://news.google.com/rss/search?q=site:reuters.com&hl=en&gl=US&ceid=US:en"
+    type: gnews
+    active: true
+  - name: bbc
+    display: BBC
+    tier: 1
+    color: "#BB1919"
+    feed: "https://news.google.com/rss/search?q=site:bbc.com&hl=en&gl=GB&ceid=GB:en"
+    type: gnews
+    active: true
+  - name: aljazeera
+    display: Al Jazeera
+    tier: 1
+    color: "#FA9000"
+    feed: "https://news.google.com/rss/search?q=site:aljazeera.com&hl=en&gl=US&ceid=US:en"
+    type: gnews
+    active: true
+  - name: ap
+    display: AP News
+    tier: 1
+    color: "#E4002B"
+    feed: "https://news.google.com/rss/search?q=site:apnews.com&hl=en&gl=US&ceid=US:en"
+    type: gnews
+    active: true
+  - name: cnn_intl
+    display: CNN
+    tier: 1
+    color: "#CC0000"
+    feed: "https://news.google.com/rss/search?q=site:cnn.com&hl=en&gl=US&ceid=US:en"
+    type: gnews
+    active: true
+  - name: dw
+    display: DW News
+    tier: 1
+    color: "#00A1DF"
+    feed: "https://news.google.com/rss/search?q=site:dw.com&hl=en&gl=DE&ceid=DE:en"
+    type: gnews
+    active: true
