@@ -95,7 +95,7 @@ def format_pesan(berita: list[dict]) -> str:
     """Format pesan elegan dengan judul klikable."""
     now = datetime.now(WIB)
     lines = [
-        f"📰 <b>RINGKASAN BERITA</b>",
+        f"📰 <b>MEDIA MONITOR</b>",
         f"📅 {tgl_id(now)} · Geopolitik & Teknologi",
         "",
     ]
