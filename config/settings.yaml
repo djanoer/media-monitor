@@ -93,7 +93,7 @@ storage:
 ringkasan_ai:
   aktif: true
   model: "qwen/qwen3.8-27b"
-  maks_artikel: 50        # batas artikel diproses per ekspor (bertahap, hemat token)
+  maks_artikel: 100       # batas artikel diproses per ekspor (10M token/hari)
   maks_umur_jam: 24       # hanya artikel 24 jam terakhir
   jeda_detik: 3           # jeda antar request (hindari rate limit)
   max_tokens: 300
