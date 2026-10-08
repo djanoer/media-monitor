@@ -244,7 +244,7 @@ def _isi_ringkasan_ai(db_path, settings: dict) -> int:
     if gemini_key:
         cadangan.append((
             gemini_key,
-            os.environ.get("GEMINI_MODEL", "").strip() or "gemini-2.0-flash",
+            os.environ.get("GEMINI_MODEL", "").strip() or "gemini-3.8-flash",
             "https://generativelanguage.googleapis.com/v1beta/openai/"
             "chat/completions", "Gemini Flash"))
     openrouter_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
@@ -252,7 +252,7 @@ def _isi_ringkasan_ai(db_path, settings: dict) -> int:
         cadangan.append((
             openrouter_key,
             os.environ.get("OPENROUTER_MODEL", "").strip()
-            or "meta-llama/llama-3.3-70b-instruct:free",
+            or "liquid/lfm-2.5-2.6b:free",
             "https://openrouter.ai/api/v1/chat/completions",
             "OpenRouter"))
     gagal_beruntun = 0
