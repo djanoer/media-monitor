@@ -1035,14 +1035,31 @@ def artikel_tanpa_ringkasan_ai(
 
 
 def artikel_tanpa_isi(
-    db_path: str | pathlib.Path, limit: int = 100
+    db_path: str | pathlib.Path, limit: int = 100,
+    hanya_tampil: bool = True, tampil_per_media: int = 10,
 ) -> list[str]:
     """URL artikel yang belum pernah dicoba unduh (terbaru dulu).
 
     Artikel yang gagal unduh tersimpan sebagai "" dan tidak diulang
     (kecuali via force di skrip).
+
+    hanya_tampil=True: prioritaskan artikel yg tampil di dashboard
+    (top N terbaru per media) — hemat bandwidth & percepat AI summary.
     """
     with _connect(db_path) as conn:
+        if hanya_tampil:
+            return [
+                r["url"] for r in conn.execute(
+                    "SELECT url FROM ("
+                    " SELECT url, published_at, id,"
+                    "  ROW_NUMBER() OVER (PARTITION BY media"
+                    "   ORDER BY published_at DESC, id DESC) AS rn"
+                    " FROM articles WHERE isi_lengkap IS NULL"
+                    ") WHERE rn <= ?"
+                    " ORDER BY published_at DESC, id DESC LIMIT ?",
+                    (tampil_per_media, limit),
+                )
+            ]
         return [
             r["url"] for r in conn.execute(
                 "SELECT url FROM articles"

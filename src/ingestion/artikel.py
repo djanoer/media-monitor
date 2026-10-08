@@ -107,21 +107,28 @@ def siklus_unduh_isi(
     delay_detik: float = 1.0,
     timeout_detik: int = 20,
     force: bool = False,
+    hanya_tampil: bool = True,
+    tampil_per_media: int = 10,
 ) -> dict[str, int]:
     """Unduh isi artikel yang belum punya. Kembalikan statistik.
 
     Best-effort: satu artikel gagal tidak menghentikan yang lain.
     Artikel yang gagal unduh ditandai "" agar tidak diulang tiap siklus
     (kecuali force=True).
+
+    hanya_tampil=True: prioritaskan artikel tampil di dashboard.
     """
     import time
 
     from src.storage import repository
 
     repository.migrate_isi_lengkap(db_path)
-    urls = repository.artikel_tanpa_isi(db_path, limit) if not force else [
-        r["url"] for r in _semua_url(db_path, limit)
-    ]
+    if force:
+        urls = [r["url"] for r in _semua_url(db_path, limit)]
+    else:
+        urls = repository.artikel_tanpa_isi(
+            db_path, limit, hanya_tampil=hanya_tampil,
+            tampil_per_media=tampil_per_media)
     ok = gagal = 0
     for i, url in enumerate(urls):
         if i > 0:

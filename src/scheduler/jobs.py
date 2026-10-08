@@ -83,6 +83,8 @@ def fetch_cycle(
                 limit=int(cfg_isi.get("limit_per_siklus", 150)),
                 delay_detik=float(cfg_isi.get("delay_detik", 1.0)),
                 timeout_detik=int(cfg_isi.get("timeout_detik", 20)),
+                hanya_tampil=cfg_isi.get("hanya_tampil", True),
+                tampil_per_media=int(cfg_isi.get("tampil_per_media", 10)),
             )
     except Exception as exc:
         log.warning("unduh isi artikel gagal: %s", exc)
