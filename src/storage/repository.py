@@ -994,14 +994,34 @@ def simpan_ringkasan_ai(db_path: str | pathlib.Path, url: str, teks: str) -> Non
 
 
 def artikel_tanpa_ringkasan_ai(
-    db_path: str | pathlib.Path, limit: int = 30, maks_umur_jam: int = 24
+    db_path: str | pathlib.Path, limit: int = 30, maks_umur_jam: int = 24,
+    hanya_tampil: bool = True, tampil_per_media: int = 10,
 ) -> list[dict]:
     """Artikel 24 jam terakhir yg isinya sudah diunduh tapi belum punya
     ringkasan AI. Kembalikan [{url, title, isi_lengkap}] terbaru dulu.
+
+    hanya_tampil=True: hanya artikel yg tampil di dashboard (top N
+    terbaru per media, sinkron dgn get_artikel_per_media) — hemat token AI.
     """
     batas = (datetime.datetime.now(datetime.timezone.utc)
              - datetime.timedelta(hours=maks_umur_jam)).isoformat()
     with _connect(db_path) as conn:
+        if hanya_tampil:
+            return [
+                dict(r) for r in conn.execute(
+                    "SELECT url, title, isi_lengkap FROM ("
+                    " SELECT url, title, isi_lengkap, published_at, id,"
+                    "  ROW_NUMBER() OVER (PARTITION BY media"
+                    "   ORDER BY published_at DESC, id DESC) AS rn"
+                    " FROM articles"
+                    " WHERE ringkasan_ai IS NULL"
+                    " AND isi_lengkap IS NOT NULL AND TRIM(isi_lengkap) != ''"
+                    " AND COALESCE(NULLIF(published_at, ''), fetched_at) >= ?"
+                    ") WHERE rn <= ?"
+                    " ORDER BY published_at DESC, id DESC LIMIT ?",
+                    (batas, tampil_per_media, limit),
+                )
+            ]
         return [
             dict(r) for r in conn.execute(
                 "SELECT url, title, isi_lengkap FROM articles"

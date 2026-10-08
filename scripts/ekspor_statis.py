@@ -219,7 +219,9 @@ def _isi_ringkasan_ai(db_path, settings: dict) -> int:
     maks_umur = int(cfg.get("maks_umur_jam", 24))
     antre = repository.artikel_tanpa_ringkasan_ai(
         db_path, limit=int(cfg.get("maks_artikel", 30)),
-        maks_umur_jam=maks_umur)
+        maks_umur_jam=maks_umur,
+        hanya_tampil=cfg.get("hanya_tampil", True),
+        tampil_per_media=int(cfg.get("tampil_per_media", 10)))
     if not antre:
         return 0
     jeda = float(cfg.get("jeda_detik", 3))
