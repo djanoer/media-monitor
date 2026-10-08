@@ -76,18 +76,17 @@ def ambil_berita(limit_geo: int = 3, limit_tek: int = 3) -> tuple[list[dict], li
 
 
 def format_pesan(geo: list[dict], tek: list[dict]) -> str:
-    """Format pesan elegan: 3 geopolitik + 3 teknologi, judul klikable."""
+    """Format: Header, Icon+Topik, 1-3, Icon+Topik, 1-3, Footer."""
     now = datetime.now(WIB)
     lines = [
         f"📰 <b>RINGKASAN BERITA</b>",
         f"📅 {tgl_id(now)}",
         "",
         f"🌍 <b>GEOPOLITIK</b>",
-        "",
     ]
-    lines += _format_seksi(geo, mulai=1)
-    lines += ["", f"💻 <b>TEKNOLOGI</b>", ""]
-    lines += _format_seksi(tek, mulai=len(geo) + 1)
+    lines += _format_seksi(geo)
+    lines += ["", f"💻 <b>TEKNOLOGI</b>"]
+    lines += _format_seksi(tek)
     lines.append("")
     lines.append("—")
     lines.append("")
@@ -97,9 +96,9 @@ def format_pesan(geo: list[dict], tek: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _format_seksi(berita: list[dict], mulai: int = 1) -> list[str]:
-    out = []
-    for i, b in enumerate(berita, mulai):
+def _format_seksi(berita: list[dict]) -> list[str]:
+    out = [""]
+    for i, b in enumerate(berita, 1):
         judul = esc_html(b["title"] or "(tanpa judul)")
         url = b["url"] or ""
         media = esc_html(b.get("media") or "")
