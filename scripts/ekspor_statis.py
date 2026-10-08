@@ -258,6 +258,18 @@ def _isi_ringkasan_ai(db_path, settings: dict) -> int:
     gagal_beruntun = 0
     fallback_aktif = False
 
+    # Catat provider aktif ke state file (dibaca hook notifikasi)
+    def _tulis_state_provider(nama, mdl):
+        try:
+            import json as _json
+            with open(os.path.join(os.path.dirname(db_path),
+                                   "ai_provider_state.json"),
+                      "w") as _f:
+                _f.write(_json.dumps({"provider": nama, "model": mdl}))
+        except Exception:
+            pass
+    _tulis_state_provider("Top Tools AI", cur_model)
+
     n = 0
     for a in antre:
         # Percobaan bertahap: 429 -> tunggu (60, 120, 240 dtk...) lalu coba
@@ -294,6 +306,7 @@ def _isi_ringkasan_ai(db_path, settings: dict) -> int:
                 gagal_beruntun = 0
                 print(f"  -> fallback ke {nama_cad} setelah 3x gagal",
                       flush=True)
+                _tulis_state_provider(nama_cad, cur_model)
             elif gagal_beruntun >= 3 and not cadangan and not fallback_aktif:
                 print("  -> tidak ada provider cadangan "
                       "(tambah GROQ_API_KEY/GEMINI_API_KEY/OPENROUTER_API_KEY"
