@@ -247,6 +247,14 @@ def _isi_ringkasan_ai(db_path, settings: dict) -> int:
             os.environ.get("GEMINI_MODEL", "").strip() or "gemini-2.0-flash",
             "https://generativelanguage.googleapis.com/v1beta/openai/"
             "chat/completions", "Gemini Flash"))
+    openrouter_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
+    if openrouter_key:
+        cadangan.append((
+            openrouter_key,
+            os.environ.get("OPENROUTER_MODEL", "").strip()
+            or "meta-llama/llama-3.3-70b-instruct:free",
+            "https://openrouter.ai/api/v1/chat/completions",
+            "OpenRouter"))
     gagal_beruntun = 0
     fallback_aktif = False
 
@@ -288,8 +296,8 @@ def _isi_ringkasan_ai(db_path, settings: dict) -> int:
                       flush=True)
             elif gagal_beruntun >= 3 and not cadangan and not fallback_aktif:
                 print("  -> tidak ada provider cadangan "
-                      "(tambah GROQ_API_KEY/GEMINI_API_KEY ke .env)",
-                      flush=True)
+                      "(tambah GROQ_API_KEY/GEMINI_API_KEY/OPENROUTER_API_KEY"
+                      " ke .env)", flush=True)
             time.sleep(jeda)
             continue
         gagal_beruntun = 0
