@@ -230,30 +230,69 @@ def _isi_ringkasan_ai(db_path, settings: dict) -> int:
     tunggu_maks = float(cfg.get("tunggu_maks_detik", 300))
     total = len(antre)
     print(f"Mengisi ringkasan AI ({total} artikel)...", flush=True)
+
+    # Provider utama + cadangan (fallback otomatis setelah 3x gagal beruntun)
+    cur_key, cur_model, cur_url = api_key, model, api_url
+    cadangan = []  # list of (key, model, url, nama)
+    groq_key = os.environ.get("GROQ_API_KEY", "").strip()
+    if groq_key and groq_key != api_key:
+        cadangan.append((
+            groq_key,
+            os.environ.get("GROQ_MODEL", "").strip() or "qwen/qwen3.8-27b",
+            API_URL_GROQ, "Groq"))
+    gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if gemini_key:
+        cadangan.append((
+            gemini_key,
+            os.environ.get("GEMINI_MODEL", "").strip() or "gemini-2.0-flash",
+            "https://generativelanguage.googleapis.com/v1beta/openai/"
+            "chat/completions", "Gemini Flash"))
+    gagal_beruntun = 0
+    fallback_aktif = False
+
     n = 0
     for a in antre:
         # Percobaan bertahap: 429 -> tunggu (60, 120, 240 dtk...) lalu coba
-        # lagi artikel yg sama; gagal lain -> berhenti, lanjut ekspor berikut.
+        # lagi artikel yg sama; gagal lain -> skip artikel, lanjut berikutnya.
+        # Fallback: 3x gagal beruntun -> coba provider cadangan (Groq/Gemini).
         teks = None
         tunggu = tunggu_awal
         for attempt in range(max_retry + 1):
             try:
                 teks = ringkas_artikel(
                     a.get("title") or "", a.get("isi_lengkap") or "",
-                    api_key, model=model, max_tokens=max_tokens,
-                    api_url=api_url)
+                    cur_key, model=cur_model, max_tokens=max_tokens,
+                    api_url=cur_url)
                 break
             except RateLimitError:
                 if attempt >= max_retry:
-                    print(f"  429 {max_retry + 1}x beruntun, berhenti "
+                    print(f"  429 {max_retry + 1}x beruntun, skip artikel "
                           f"({n}/{total})", flush=True)
-                    return n
+                    break
                 print(f"  429 -> tunggu {tunggu:g} dtk lalu coba lagi",
                       flush=True)
                 time.sleep(tunggu)
                 tunggu = min(tunggu * 2, tunggu_maks)
         if not teks:
-            break
+            gagal_beruntun += 1
+            judul_pendek = (a.get("title") or "")[:50]
+            print(f"  gagal: {judul_pendek}... (skip, "
+                  f"gagal beruntun: {gagal_beruntun})", flush=True)
+            # Fallback provider setelah 3x gagal beruntun
+            if (gagal_beruntun >= 3 and not fallback_aktif
+                    and cadangan):
+                cur_key, cur_model, cur_url, nama_cad = cadangan.pop(0)
+                fallback_aktif = True
+                gagal_beruntun = 0
+                print(f"  -> fallback ke {nama_cad} setelah 3x gagal",
+                      flush=True)
+            elif gagal_beruntun >= 3 and not cadangan and not fallback_aktif:
+                print("  -> tidak ada provider cadangan "
+                      "(tambah GROQ_API_KEY/GEMINI_API_KEY ke .env)",
+                      flush=True)
+            time.sleep(jeda)
+            continue
+        gagal_beruntun = 0
         repository.simpan_ringkasan_ai(db_path, a["url"], teks)
         n += 1
         if n % 5 == 0 or n == total:
