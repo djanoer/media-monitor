@@ -34,86 +34,60 @@ def esc_html(s: str) -> str:
     return (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def ambil_berita(limit: int = 10) -> list[dict]:
-    """Ambil berita 24 jam terakhir: prioritaskan geopolitik & teknologi,
-    lalu yang ada ringkasan AI."""
+def ambil_berita(limit_geo: int = 3, limit_tek: int = 3) -> tuple[list[dict], list[dict]]:
+    """Return (geopolitik, teknologi): masing-masing list dict artikel."""
     con = sqlite3.connect(DB)
     con.row_factory = sqlite3.Row
 
-    # Keyword geopolitik & teknologi (ID + EN)
     kw_geo = ["geopolitik", "geopolitics", "diplomasi", "diplomacy", "konflik",
-              "conflict", "perang", "war", "nato", "pbb", "un ", "asean",
+              "conflict", "perang", "war", "nato", "pbb", "asean",
               "tiongkok", "china", "amerika", "russia", "rusia", "ukraina",
               "ukraine", "timur tengah", "middle east", "taiwan", "korea",
               "nuklir", "nuclear", "sanksi", "sanction", "perbatasan", "border"]
-    kw_tek = ["teknologi", "technology", "tech", "ai ", "kecerdasan buatan",
+    kw_tek = ["teknologi", "technology", "tech", "kecerdasan buatan",
               "artificial intelligence", "startup", "digital", "siber", "cyber",
               "semikonduktor", "semiconductor", "chip", "5g", "satelit",
               "satellite", "roket", "rocket", "luar angkasa", "space",
               "robot", "drone", "quantum", "kuantum", "blockchain", "kripto",
               "crypto", "openai", "google", "microsoft", "apple", "nvidia",
-              "tesla", "spacex", "gadget", "smartphone", "laptop", "internet"]
-    semua_kw = kw_geo + kw_tek
-    like_clause = " OR ".join(["(lower(title) LIKE ? OR lower(ringkasan_ai) LIKE ?)"] * len(semua_kw))
-    params = []
-    for kw in semua_kw:
-        params += [f"%{kw}%", f"%{kw}%"]
+              "tesla", "spacex", "gadget", "smartphone", "internet"]
 
-    # Ambil yang match topik dulu
-    rows = con.execute(f"""
-        SELECT title, url, media, published_at, ringkasan_ai, sentimen, risiko
-        FROM articles
-        WHERE published_at >= datetime('now', '-24 hours')
-          AND ({like_clause})
-        ORDER BY
-            CASE WHEN ringkasan_ai IS NOT NULL AND ringkasan_ai != '' THEN 0 ELSE 1 END,
-            published_at DESC
-        LIMIT ?
-    """, (*params, limit)).fetchall()
-
-    # Kalau kurang dari limit, tambah berita umum terbaru
-    if len(rows) < limit:
-        sisa = limit - len(rows)
-        urls_ada = {r["url"] for r in rows}
-        rows2 = con.execute("""
+    def cari(kw_list: list[str], limit: int) -> list[dict]:
+        like = " OR ".join(["(lower(title) LIKE ? OR lower(ringkasan_ai) LIKE ?)"] * len(kw_list))
+        params = []
+        for kw in kw_list:
+            params += [f"%{kw}%", f"%{kw}%"]
+        rows = con.execute(f"""
             SELECT title, url, media, published_at, ringkasan_ai, sentimen, risiko
             FROM articles
             WHERE published_at >= datetime('now', '-24 hours')
-            ORDER BY published_at DESC
+              AND ({like})
+            ORDER BY
+                CASE WHEN ringkasan_ai IS NOT NULL AND ringkasan_ai != '' THEN 0 ELSE 1 END,
+                published_at DESC
             LIMIT ?
-        """, (sisa * 3,)).fetchall()
-        for r in rows2:
-            if r["url"] not in urls_ada and len(rows) < limit:
-                rows.append(r)
-                urls_ada.add(r["url"])
+        """, (*params, limit)).fetchall()
+        return [dict(r) for r in rows]
 
+    geo = cari(kw_geo, limit_geo)
+    tek = cari(kw_tek, limit_tek)
     con.close()
-    return [dict(r) for r in rows]
+    return geo, tek
 
 
-def format_pesan(berita: list[dict]) -> str:
-    """Format pesan elegan dengan judul klikable."""
+def format_pesan(geo: list[dict], tek: list[dict]) -> str:
+    """Format pesan elegan: 3 geopolitik + 3 teknologi, judul klikable."""
     now = datetime.now(WIB)
     lines = [
         f"📰 <b>RINGKASAN BERITA</b>",
-        f"📅 {tgl_id(now)} · Geopolitik & Teknologi",
+        f"📅 {tgl_id(now)}",
+        "",
+        f"🌍 <b>GEOPOLITIK</b>",
         "",
     ]
-    for i, b in enumerate(berita, 1):
-        judul = esc_html(b["title"] or "(tanpa judul)")
-        url = b["url"] or ""
-        media = esc_html(b.get("media") or "")
-        ringkasan = esc_html(b.get("ringkasan_ai") or "").strip()
-        # Potong ringkasan agar tidak terlalu panjang
-        if len(ringkasan) > 300:
-            ringkasan = ringkasan[:297] + "..."
-
-        # Format: Nama Media - Judul (klikable)
-        lines.append(f"<b>{i}. {media} - <a href=\"{url}\">{judul}</a></b>")
-        if ringkasan:
-            lines.append(f"   {ringkasan}")
-        lines.append(f"   🔗 <a href=\"{url}\">Baca selengkapnya</a>")
-        lines.append("")
+    lines += _format_seksi(geo, mulai=1)
+    lines += ["", f"💻 <b>TEKNOLOGI</b>", ""]
+    lines += _format_seksi(tek, mulai=len(geo) + 1)
     lines.append("")
     lines.append("—")
     lines.append("")
@@ -121,6 +95,23 @@ def format_pesan(berita: list[dict]) -> str:
     lines.append("")
     lines.append("<i>Disusun otomatis dari Media Monitor</i>")
     return "\n".join(lines)
+
+
+def _format_seksi(berita: list[dict], mulai: int = 1) -> list[str]:
+    out = []
+    for i, b in enumerate(berita, mulai):
+        judul = esc_html(b["title"] or "(tanpa judul)")
+        url = b["url"] or ""
+        media = esc_html(b.get("media") or "")
+        ringkasan = esc_html(b.get("ringkasan_ai") or "").strip()
+        if len(ringkasan) > 300:
+            ringkasan = ringkasan[:297] + "..."
+        out.append(f"<b>{i}. {media} - <a href=\"{url}\">{judul}</a></b>")
+        if ringkasan:
+            out.append(f"   {ringkasan}")
+        out.append(f"   🔗 <a href=\"{url}\">Baca selengkapnya</a>")
+        out.append("")
+    return out
 
 
 def kirim(token: str, chat_id: str, teks: str) -> bool:
@@ -158,12 +149,15 @@ def main():
         sys.exit(1)
 
     test = "--test" in sys.argv
-    berita = ambil_berita(limit=5 if test else 10)
-    if not berita:
+    if test:
+        geo, tek = ambil_berita(limit_geo=2, limit_tek=2)
+    else:
+        geo, tek = ambil_berita(limit_geo=3, limit_tek=3)
+    if not geo and not tek:
         print("Tidak ada berita 24 jam terakhir")
         sys.exit(0)
 
-    pesan = format_pesan(berita)
+    pesan = format_pesan(geo, tek)
     if test:
         print("=== PREVIEW ===")
         print(pesan[:1500])
