@@ -12,7 +12,10 @@ from __future__ import annotations
 
 import re
 
-from src.processing.leksikon_sentimen import INTENSIF, NEGASI, NEGATIF, POSITIF
+from src.processing.leksikon_sentimen import (
+    INTENSIF, INTENSIF_EN, NEGASI, NEGASI_EN, NEGATIF, NEGATIF_EN,
+    POSITIF, POSITIF_EN,
+)
 
 _TOKEN = re.compile(r"[a-z]+(?:-[a-z]+)?")
 
@@ -30,16 +33,16 @@ def skor_teks(
     tokens = tokenisasi(teks)
     skor = 0.0
     for i, tok in enumerate(tokens):
-        if tok in POSITIF:
+        if tok in POSITIF or tok in POSITIF_EN:
             val = 1.0
-        elif tok in NEGATIF:
+        elif tok in NEGATIF or tok in NEGATIF_EN:
             val = -1.0
         else:
             continue
         jendela = tokens[max(0, i - 2):i]
-        if any(t in NEGASI for t in jendela):
+        if any(t in NEGASI or t in NEGASI_EN for t in jendela):
             val = -val
-        if any(t in INTENSIF for t in jendela):
+        if any(t in INTENSIF or t in INTENSIF_EN for t in jendela):
             val *= 1.5
         skor += val * bobot
     return round(skor, 2)
