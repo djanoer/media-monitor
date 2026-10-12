@@ -189,32 +189,17 @@ def _skala_sentimen_html(sent: str) -> str:
 
 
 def _isi_ringkasan_ai(db_path, settings: dict) -> int:
-    """Isi cache ringkasan_ai via API OpenAI-compatible untuk artikel terbaru.
+    """Isi cache ringkasan_ai via ai_route.py (direct-only) untuk artikel terbaru.
 
-    Provider: TOPTOOLS_API_KEY (prioritas) atau GROQ_API_KEY (fallback).
-    Best-effort: tanpa key / gagal / 429 -> berhenti diam-diam, ekspor tetap
-    jalan dengan ringkasan ekstraktif. Kembalikan jumlah yg berhasil.
+    Provider: ai_route.py direct-only — rantai fallback penuh model gratis.
+    Best-effort: semua model gagal -> berhenti diam-diam,
+    ekspor tetap jalan dengan ringkasan ekstraktif. Kembalikan jumlah yg berhasil.
     """
     cfg = settings.get("ringkasan_ai") or {}
     if not cfg.get("aktif", True):
         return 0
-    from src.processing.llm_groq import (
-        API_URL_GROQ, API_URL_TOPTOOLS, MODEL_DEFAULT_TOPTOOLS,
-    )
-    api_key = os.environ.get("TOPTOOLS_API_KEY", "").strip()
-    api_url = os.environ.get("TOPTOOLS_API_URL", "").strip() or API_URL_TOPTOOLS
-    env_model = os.environ.get("TOPTOOLS_MODEL", "").strip() or MODEL_DEFAULT_TOPTOOLS
-    if api_key:
-        provider = "Top Tools AI"
-    else:
-        api_key = os.environ.get("GROQ_API_KEY", "").strip()
-        api_url = API_URL_GROQ
-        env_model = ""
-        provider = "Groq"
-    if not api_key:
-        print("Ringkasan AI dilewati (tidak ada API key)", flush=True)
-        return 0
-    print(f"Ringkasan AI via {provider}...", flush=True)
+    from src.processing.llm_groq import ringkas_via_9router
+    print("Ringkasan AI (direct)...", flush=True)
     repository.migrate_ringkasan_ai(db_path)
     maks_umur = int(cfg.get("maks_umur_jam", 24))
     antre = repository.artikel_tanpa_ringkasan_ai(
@@ -225,42 +210,27 @@ def _isi_ringkasan_ai(db_path, settings: dict) -> int:
     if not antre:
         return 0
     jeda = float(cfg.get("jeda_detik", 3))
-    model = env_model or cfg.get("model", "qwen/qwen3.8-27b")
     max_tokens = int(cfg.get("max_tokens", 300))
-    max_retry = int(cfg.get("retry_429", 3))
-    tunggu_awal = float(cfg.get("tunggu_awal_detik", 60))
-    tunggu_maks = float(cfg.get("tunggu_maks_detik", 300))
     total = len(antre)
-    print(f"Mengisi ringkasan AI ({total} artikel)...", flush=True)
-
-    # Provider utama + cadangan (fallback otomatis setelah 3x gagal beruntun)
-    cur_key, cur_model, cur_url = api_key, model, api_url
-    cadangan = []  # list of (key, model, url, nama)
-    groq_key = os.environ.get("GROQ_API_KEY", "").strip()
-    if groq_key and groq_key != api_key:
-        cadangan.append((
-            groq_key,
-            os.environ.get("GROQ_MODEL", "").strip() or "qwen/qwen3.8-27b",
-            API_URL_GROQ, "Groq"))
-    gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
-    if gemini_key:
-        cadangan.append((
-            gemini_key,
-            os.environ.get("GEMINI_MODEL", "").strip() or "gemini-3.8-flash",
-            "https://generativelanguage.googleapis.com/v1beta/openai/"
-            "chat/completions", "Gemini Flash"))
-    openrouter_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
-    if openrouter_key:
-        cadangan.append((
-            openrouter_key,
-            os.environ.get("OPENROUTER_MODEL", "").strip()
-            or "liquid/lfm-2.5-2.6b:free",
-            "https://openrouter.ai/api/v1/chat/completions",
-            "OpenRouter"))
-    gagal_beruntun = 0
-    fallback_aktif = False
+    print(f"Mengisi ringkasan AI (direct) ({total} artikel)...", flush=True)
 
     # Catat provider aktif ke state file (dibaca hook notifikasi)
+    def _provider_dari_model(model_pakai):
+        m = (model_pakai or "").lower()
+        if m == "toptools" or m.startswith("direct-toptools"):
+            return "Top Tools AI"
+        if m == "groq" or m.startswith("direct-groq"):
+            return "Groq"
+        if m == "gemini" or m.startswith("direct-gemini"):
+            return "Gemini"
+        if m == "openrouter" or m.startswith("direct-openrouter"):
+            return "OpenRouter"
+        if m == "tokenharbor" or m.startswith("direct-tokenharbor"):
+            return "Token Harbor"
+        if m == "deepseek" or m.startswith("direct-deepseek"):
+            return "DeepSeek"
+        return model_pakai or "-"
+
     def _tulis_state_provider(nama, mdl):
         try:
             import json as _json
@@ -270,52 +240,22 @@ def _isi_ringkasan_ai(db_path, settings: dict) -> int:
                 _f.write(_json.dumps({"provider": nama, "model": mdl}))
         except Exception:
             pass
-    _tulis_state_provider("Top Tools AI", cur_model)
+    _tulis_state_provider("-", "-")
 
     n = 0
     for a in antre:
-        # Percobaan bertahap: 429 -> tunggu (60, 120, 240 dtk...) lalu coba
-        # lagi artikel yg sama; gagal lain -> skip artikel, lanjut berikutnya.
-        # Fallback: 3x gagal beruntun -> coba provider cadangan (Groq/Gemini).
-        teks = None
-        tunggu = tunggu_awal
-        for attempt in range(max_retry + 1):
-            try:
-                teks = ringkas_artikel(
-                    a.get("title") or "", a.get("isi_lengkap") or "",
-                    cur_key, model=cur_model, max_tokens=max_tokens,
-                    api_url=cur_url)
-                break
-            except RateLimitError:
-                if attempt >= max_retry:
-                    print(f"  429 {max_retry + 1}x beruntun, skip artikel "
-                          f"({n}/{total})", flush=True)
-                    break
-                print(f"  429 -> tunggu {tunggu:g} dtk lalu coba lagi",
-                      flush=True)
-                time.sleep(tunggu)
-                tunggu = min(tunggu * 2, tunggu_maks)
+        # ai_route.py direct-only sudah punya rantai fallback.
+        # Gagal total -> skip artikel, lanjut berikutnya (best-effort).
+        teks, model_pakai = ringkas_via_9router(
+            a.get("title") or "", a.get("isi_lengkap") or "",
+            max_tokens=max_tokens)
         if not teks:
-            gagal_beruntun += 1
             judul_pendek = (a.get("title") or "")[:50]
-            print(f"  gagal: {judul_pendek}... (skip, "
-                  f"gagal beruntun: {gagal_beruntun})", flush=True)
-            # Fallback provider setelah 3x gagal beruntun
-            if (gagal_beruntun >= 3 and not fallback_aktif
-                    and cadangan):
-                cur_key, cur_model, cur_url, nama_cad = cadangan.pop(0)
-                fallback_aktif = True
-                gagal_beruntun = 0
-                print(f"  -> fallback ke {nama_cad} setelah 3x gagal",
-                      flush=True)
-                _tulis_state_provider(nama_cad, cur_model)
-            elif gagal_beruntun >= 3 and not cadangan and not fallback_aktif:
-                print("  -> tidak ada provider cadangan "
-                      "(tambah GROQ_API_KEY/GEMINI_API_KEY/OPENROUTER_API_KEY"
-                      " ke .env)", flush=True)
+            print(f"  gagal: {judul_pendek}... (skip)", flush=True)
             time.sleep(jeda)
             continue
-        gagal_beruntun = 0
+        if model_pakai:
+            _tulis_state_provider(_provider_dari_model(model_pakai), model_pakai)
         repository.simpan_ringkasan_ai(db_path, a["url"], teks)
         n += 1
         if n % 5 == 0 or n == total:
