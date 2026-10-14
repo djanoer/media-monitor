@@ -201,6 +201,7 @@ def _isi_ringkasan_ai(db_path, settings: dict) -> int:
     from src.processing.llm_groq import ringkas_via_9router
     print("Ringkasan AI (direct)...", flush=True)
     repository.migrate_ringkasan_ai(db_path)
+    repository.migrate_ringkasan_ai_at(db_path)
     maks_umur = int(cfg.get("maks_umur_jam", 24))
     antre = repository.artikel_tanpa_ringkasan_ai(
         db_path, limit=int(cfg.get("maks_artikel", 30)),
@@ -216,18 +217,21 @@ def _isi_ringkasan_ai(db_path, settings: dict) -> int:
 
     # Catat provider aktif ke state file (dibaca hook notifikasi)
     def _provider_dari_model(model_pakai):
-        m = (model_pakai or "").lower()
-        if m == "toptools" or m.startswith("direct-toptools"):
+        raw = (model_pakai or "").lower()
+        m = raw[len("direct-"):] if raw.startswith("direct-") else raw
+        if not m:
+            return model_pakai or "-"
+        if m.startswith("toptools") or "glm" in m:
             return "Top Tools AI"
-        if m == "groq" or m.startswith("direct-groq"):
-            return "Groq"
-        if m == "gemini" or m.startswith("direct-gemini"):
-            return "Gemini"
-        if m == "openrouter" or m.startswith("direct-openrouter"):
-            return "OpenRouter"
-        if m == "tokenharbor" or m.startswith("direct-tokenharbor"):
+        if m.startswith("tokenharbor") or "claude" in m or "haiku" in m:
             return "Token Harbor"
-        if m == "deepseek" or m.startswith("direct-deepseek"):
+        if m.startswith("groq") or "qwen" in m or "llama" in m:
+            return "Groq"
+        if m.startswith("gemini") or "gemini" in m:
+            return "Gemini"
+        if m.startswith("openrouter") or "liquid" in m:
+            return "OpenRouter"
+        if m.startswith("deepseek") or "deepseek" in m:
             return "DeepSeek"
         return model_pakai or "-"
 
@@ -371,6 +375,7 @@ def _metrik(db_path, media_list: list[dict]) -> dict:
              "Sedang" if avg_r >= 22 else "Rendah")
     repository.migrate_isi_lengkap(db_path)
     repository.migrate_ringkasan_ai(db_path)
+    repository.migrate_ringkasan_ai_at(db_path)
     nm = len(media_list)
     ok_isi = repository.count_isi_lengkap(db_path)
     last = repository.get_last_run(db_path)
