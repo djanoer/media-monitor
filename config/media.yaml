@@ -70,49 +70,49 @@ media:
     color: "#A9E34B"
     feed: "https://news.google.com/rss/search?q=site:kumparan.com&hl=id&gl=ID&ceid=ID:id"
     type: gnews
-    active: true
+    active: false
   - name: tribunnews
     display: Tribunnews
     tier: 2  # riset 6 Okt 2026: Monash Lens/NewsGuard catat sebar sumber tak terverifikasi (Bucha); model klik/agregasi
     color: "#E64980"
     feed: "https://news.google.com/rss/search?q=site:tribunnews.com&hl=id&gl=ID&ceid=ID:id"
     type: gnews
-    active: true
+    active: false
   - name: okezone
     display: Okezone
     tier: 2  # riset 6 Okt 2026: portal klik-driven MNC; tak masuk survei trust Reuters
     color: "#15AABF"
     feed: "https://news.google.com/rss/search?q=site:okezone.com&hl=id&gl=ID&ceid=ID:id"
     type: gnews
-    active: true
+    active: false
   - name: sindonews
     display: Sindonews
     tier: 2  # riset 6 Okt 2026: portal MNC model klik; trust Reuters 48%
     color: "#2F9E44"
     feed: "https://www.sindonews.com/feed"
     type: native
-    active: true
+    active: false
   - name: viva
     display: Viva
     tier: 2  # riset 6 Okt 2026: portal grup VIVA model klik/agregasi
     color: "#1971C2"
     feed: "https://news.google.com/rss/search?q=site:viva.co.id&hl=id&gl=ID&ceid=ID:id"
     type: gnews
-    active: true
+    active: false
   - name: merdeka
     display: Merdeka
     tier: 2  # riset 6 Okt 2026: portal KLY model klik; trust Reuters 49%
     color: "#9C36B5"
     feed: "https://news.google.com/rss/search?q=site:merdeka.com&hl=id&gl=ID&ceid=ID:id"
     type: gnews
-    active: true
+    active: false
   - name: suara
     display: Suara.com
     tier: 2  # riset 6 Okt 2026: trust Reuters 46% (terendah dari 16); portal Arkadia
     color: "#F59F00"
     feed: "https://news.google.com/rss/search?q=site:suara.com&hl=id&gl=ID&ceid=ID:id"
     type: gnews
-    active: true
+    active: false
   - name: reuters
     display: Reuters
     tier: 1
@@ -147,11 +147,25 @@ media:
     color: "#CC0000"
     feed: "https://news.google.com/rss/search?q=site:cnn.com&hl=en&gl=US&ceid=US:en"
     type: gnews
-    active: true
+    active: false
   - name: dw
     display: DW News
     tier: 1
     color: "#00A1DF"
     feed: "https://news.google.com/rss/search?q=site:dw.com&hl=en&gl=DE&ceid=DE:en"
+    type: gnews
+    active: false
+  - name: jpnn
+    display: JPNN
+    tier: 1  # tambahan 13 Okt 2026 (keputusan Bor): lengkapi 10 media nasional tier 1
+    color: "#748FFC"
+    feed: "https://news.google.com/rss/search?q=site:jpnn.com&hl=id&gl=ID&ceid=ID:id"
+    type: gnews
+    active: true
+  - name: national_geographic
+    display: National Geographic
+    tier: 1  # diminta Bor 13 Okt 2026: salah satu dari 5 media luar negeri
+    color: "#FFCC00"
+    feed: "https://news.google.com/rss/search?q=site:nationalgeographic.com&hl=en&gl=US&ceid=US:en"
     type: gnews
     active: true

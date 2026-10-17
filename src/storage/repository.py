@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS articles (
     summary TEXT,
     isi_lengkap TEXT,
     ringkasan_ai TEXT,
+    ringkasan_ai_at TEXT,
     link TEXT,
     published_at TEXT,
     fetched_at TEXT NOT NULL,
@@ -986,11 +987,21 @@ def migrate_ringkasan_ai(db_path: str | pathlib.Path) -> bool:
         return True
 
 
-def simpan_ringkasan_ai(db_path: str | pathlib.Path, url: str, teks: str) -> None:
-    """Simpan ringkasan AI ke cache (idempoten per URL)."""
+def migrate_ringkasan_ai_at(db_path: str | pathlib.Path) -> bool:
+    """Migrasi idempoten: menambah kolom ringkasan_ai_at bila belum ada."""
     with _connect(db_path) as conn:
-        conn.execute("UPDATE articles SET ringkasan_ai = ? WHERE url = ?",
-                     (teks, url))
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(articles)").fetchall()}
+        if "ringkasan_ai_at" not in cols:
+            conn.execute("ALTER TABLE articles ADD COLUMN ringkasan_ai_at TEXT")
+            return True
+        return False
+
+
+def simpan_ringkasan_ai(db_path: str | pathlib.Path, url: str, teks: str) -> None:
+    """Simpan ringkasan AI ke cache (idempoten per URL) dan catat timestamp di ringkasan_ai_at."""
+    with _connect(db_path) as conn:
+        conn.execute("UPDATE articles SET ringkasan_ai = ?, ringkasan_ai_at = ? WHERE url = ?",
+                     (teks, _utcnow(), url))
 
 
 def artikel_tanpa_ringkasan_ai(
@@ -1002,6 +1013,9 @@ def artikel_tanpa_ringkasan_ai(
 
     hanya_tampil=True: hanya artikel yg tampil di dashboard (top N
     terbaru per media, sinkron dgn get_artikel_per_media) — hemat token AI.
+    Ranking dihitung dari SEMUA artikel terbaru per media (seperti dashboard),
+    baru difilter yg belum punya ringkasan — artikel di luar top N tidak
+    pernah diproses.
 
     Fallback isi: pakai isi_lengkap jika ada, sonst summary RSS
     (untuk URL Google News yg tidak bisa diunduh isinya).
@@ -1016,17 +1030,16 @@ def artikel_tanpa_ringkasan_ai(
                     " COALESCE(NULLIF(TRIM(isi_lengkap), ''), summary)"
                     "  AS isi_lengkap FROM ("
                     " SELECT url, title, isi_lengkap, summary,"
-                    "  published_at, id,"
+                    "  ringkasan_ai, published_at, id,"
                     "  ROW_NUMBER() OVER (PARTITION BY media"
                     "   ORDER BY published_at DESC, id DESC) AS rn"
                     " FROM articles"
-                    " WHERE ringkasan_ai IS NULL"
-                    " AND ("
+                    " WHERE ("
                     "   (isi_lengkap IS NOT NULL AND TRIM(isi_lengkap) != '')"
                     "   OR (summary IS NOT NULL AND TRIM(summary) != '')"
                     " )"
                     " AND COALESCE(NULLIF(published_at, ''), fetched_at) >= ?"
-                    ") WHERE rn <= ?"
+                    ") WHERE rn <= ? AND ringkasan_ai IS NULL"
                     " ORDER BY published_at DESC, id DESC LIMIT ?",
                     (batas, tampil_per_media, limit),
                 )
